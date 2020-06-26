@@ -1,0 +1,30 @@
+ALU chip:
+28c64
+address: A0-A12
+A0-A3 - input A
+A4-A7 - input B
+A8-A11 - command
+A12 - carry_in
+
+IO
+IO0-3 - F
+IO4 - Zero
+IO5 - carry
+
+commands: 
+0  0  "add",
+1  1  "sub",
+2  2  "neg",
+3  3  "shl",
+4  4  "NOP",
+5  5  "inc",
+6  6  "NOP",
+7  7  "NOP",
+8  8  "not A",
+9  9  "and",
+10 a  "or",
+11 b  "xor",
+12 c  "zero",
+13 d  "NOP",
+14 e  "NOP",
+15 f  "NOP"

@@ -1,0 +1,49 @@
+HC : 
+
+5x4 + 2 (22) 4 bit Counters up-down (A(2) B(2) X(4) y(4) S(4) PC(4) mc(2))
+24
+https://www.gme.cz/74hc193-dip16-texas-instruments
+
+
+4x 7400 (nand x4)
+https://www.gme.cz/74hc00-dip14-texas-instruments
+
+
+6x 7432 (or x4)
+https://www.gme.cz/74hc32-dip14-texas-instruments
+
+4x 74138 (3-8 decoder)
+https://www.gme.cz/74hc138-dip16-texas-instruments
+
+4x2 (16 bit addr) + 8 (8 bit data) + 8 (etc) = 24 x 74541 (8 bit buffer) 
+https://www.gme.cz/74hc541-dip20-texas-instruments
+
+8x 74573 (8 bit register) 
+https://www.gme.cz/74hc573an-dip20-st-texas-instruments
+
+6x 74hct14 NOT
+
+
+
+HCT 
+8x 7408 (and x4)
+https://www.gme.cz/74hct08-dip14-texas-instruments
+
+
+2x 8kx8bit AT28C64B-15PU - available (alu)
+6x more needed
+
+
+4x 74373 - Transparent latch
+
+3x 74139 - 2-> 4 decoder
+
+4x 621024 - 128kx8 SRAM
+
+NEC 82C55AC-2 - 3x8bit io ports
+
+
+NEW STUFF
+
+2x 4vstupove hradlo AND x2
+https://www.gme.cz/74hc21-dip14

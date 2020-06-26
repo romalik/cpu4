@@ -1,0 +1,163 @@
+data bus       address bus
+   |                |
+   | <-> A          |   0  *
+   |   ...\....     |
+   | <-|R  alu|     |   1
+   | <-|flags |     |   2
+   |   ^^^^/^^^     |
+   | <->  B         |   3  *
+   |                |
+   | <->  F         |   4
+   |                |
+   | <-> SH \       |   5  *
+   |         >----> |                 <--- +/-
+   | <-> SL /       |   6  *
+   |                |
+   | <-> S[X]       |   7  *
+   |                |
+   | <-> XH \       |   8  *
+   |         >----> |                 <--- +/-
+   | <-> XL /       |   9  *
+   |                |
+   | <-> PH \       |   19
+   |         >----> |                 <--- +
+   | <-> PL /       |   20
+   |                |
+   | <-> M[P]       |   21
+   |                |
+   | <-> M[X]       |   10 *
+   |                |
+   | <-> YH \       |   11 *
+   |         >----> |                 <--- +/-
+   | <-> YL /       |   12 *
+   |                |
+   | <-> M[Y]       |   13 *
+   |                |
+-  | <-> ZH \       |   14 *
+   |         >----> |
+-  | <-> ZL / \     |   15 *
+   |           \    |
+   |       ----(+)->|
+   |      /         |
+-  | <-> base_off   |   16 *
+   |                |
+-  | <-> M[Z]       |   17 *
+   |                |
+-  | <-> M[Z+b_off] |   18 *
+   |                |
+   | <-  int_vec    |   22
+   |                |
+   |  -> IR         |   23
+                    |
+
+17 12
+-9
+20
+  
+
+7 6 5 4 | 3 2 1 0
+ opcode | sel/cmd      
+
+Register
+
+0 0000 A   - cmd & mc
+1 0001 B   - cmd only
+2 0010 XL  - cmd & mc
+3 0011 XH  - cmd & mc
+4 0100 YL  - cmd only
+5 0101 YH  - cmd only
+6 0110 SL  - cmd only
+7 0111 SH  - cmd only
+8 1000 ZL  - cmd only
+9 1001 ZH  - cmd only
+a 1010 OFF - cmd only
+b 1011 M[z + off] - cmd only
+c 1100 M[z] - cmd 
+d 1101 X[x] - cmd 
+e 1110 M[y] - cmd 
+f 1111 M[s] - cmd & mc
+
+
+1 0000 R  alu
+1 0001 fl alu
+1 0010 F
+1 0011 PH
+1 0100 PL
+1 0101 M[P]
+1 0110 int_vec
+1 0111 IR
+
+microcode
+
+out: 
+
+
+
+
+  12     |    11   | 10  | 9  8 | 7  6  5  4  | 3  2  1  0
+(super)  | (fault) | irq | sect |     IR      |     seq
+
+
+
+
+
+fetch:
+0000 M[p]out IRIn P++
+
+commands:
+
+section 00
+
+0 0000 nop
+    SeqRst
+1 0001 seta
+    SelOut Ain SeqRst
+2 0010 puta
+    Aout SelIn SeqRst
+3 0011 lit
+    PC-A MRead SelIn SeqRst
+4 0100 push
+    SP-A MWrite SelOut SP-- SeqRst
+5 0101 pop
+    SP++
+    SP-A MRead SelIn SeqRst
+6 0110 **********
+
+7 0111 **********
+
+8 1000 alu
+    **wait??*
+    fl_alu_out Fin
+    r_alu_out Ain SeqRst
+9 1001 cmp
+    **wait??*
+    fl_alu_out Fin SeqRst
+a 1010 jmpX
+    xl_out pl_in jmp_if
+    xh_out ph_in jmp_if
+b 1011 litw
+    m[p]_out sel_in P++
+    m[p]_out sel_in sel_high P++ SeqRst
+    
+c 1100 pushw
+    m[s]_in sel_out S--
+    m[s]_in sel_out sel_high S--
+d 1101 popw
+    S++
+    m[s]_out sel_in S--
+    m[s]_out sel_in sel_high S--
+e 1110 ***** (call?) - after base pointers
+
+f 1111 ext
+    extSet SeqRst
+
+section 01
+
+0 0000 X++
+    X++ seqRst extRst
+0 0001 X--
+    X-- seqRst extRst
+0 0002 Y++
+0 0003 Y--
+
+

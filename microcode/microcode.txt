@@ -1,0 +1,225 @@
+section config
+
+address_width 13
+control_width 48
+
+end
+
+section control_word
+
+#n  active  name
+0   H       mc_write_selector_0
+1   H       mc_write_selector_1
+2   H       mc_write_selector_2
+3   H       mc_write_selector_3
+4   H       mc_read_selector_0
+5   H       mc_read_selector_1
+6   H       mc_read_selector_2
+7   H       mc_read_selector_3
+
+8   L       sel_write 
+9   L       sel_read
+10  L       pl_read
+11  L       pl_write
+12  L       ph_read
+13  L       ph_write
+14  L       m[p]_read
+15  L       ir_write
+
+16  L       r_alu_read
+17  L       fl_alu_read
+18  L       F_write
+19  L       F_read
+20  L       int_vec_read
+21  L       cmd_to_sel_read
+22  L       cmd_to_sel_write
+23  L       cnd_jmp
+
+24  H       seq_rst
+25  H       ext_rst
+26  H       ext_set
+27  H       ei
+28  H       di
+29  H       mmu_on
+30  H       mmu_off
+31  H       ds
+
+32  L       s++
+33  L       s--
+34  L       x++
+35  L       x--
+36  L       y++
+37  L       y--
+38  L       p++
+39  L       off++
+
+40  L       tl_read
+41  L       tl_write
+42  L       th_read
+43  L       th_write
+44  H       s_reset
+45  H       p_reset
+46  H       user_mode
+47  H       super_mode
+
+end
+
+section alias
+
+#0000
+a_write         sel_write
+#0001
+b_write         mc_write_selector_0 sel_write
+#0010
+xl_write        mc_write_selector_1 sel_write
+#0011
+xh_write        mc_write_selector_0 mc_write_selector_1 sel_write
+#0100
+yl_write        mc_write_selector_2 sel_write
+#0101
+yh_write        mc_write_selector_0 mc_write_selector_2 sel_write
+#0110
+sl_write        mc_write_selector_1 mc_write_selector_2 sel_write
+#0111
+sh_write        mc_write_selector_0 mc_write_selector_1 mc_write_selector_2 sel_write
+#1000
+zl_write        mc_write_selector_3 sel_write
+#1001
+zh_write        mc_write_selector_0 mc_write_selector_3 sel_write
+#1010
+off_write       mc_write_selector_1 mc_write_selector_3 sel_write
+#1011
+m[zoff]_write   mc_write_selector_0 mc_write_selector_1 mc_write_selector_3 sel_write
+#1100
+m[z]_write      mc_write_selector_2 mc_write_selector_3 sel_write
+#1101
+m[x]_write      mc_write_selector_0 mc_write_selector_2 mc_write_selector_3 sel_write
+#1110
+m[y]_write      mc_write_selector_1 mc_write_selector_2 mc_write_selector_3 sel_write
+#1111
+m[s]_write      mc_write_selector_0 mc_write_selector_1 mc_write_selector_2 mc_write_selector_3 sel_write
+
+arg_write       cmd_to_sel_write sel_write
+
+#0000
+a_read          sel_read
+#0001
+b_read          mc_read_selector_0 sel_read
+#0010
+xl_read         mc_read_selector_1 sel_read
+#0011
+xh_read         mc_read_selector_0 mc_read_selector_1 sel_read
+#0100
+yl_read         mc_read_selector_2 sel_read
+#0101
+yh_read         mc_read_selector_0 mc_read_selector_2 sel_read
+#0110
+sl_read         mc_read_selector_1 mc_read_selector_2 sel_read
+#0111
+sh_read         mc_read_selector_0 mc_read_selector_1 mc_read_selector_2 sel_read
+#1000
+zl_read         mc_read_selector_3 sel_read
+#1001
+zh_read         mc_read_selector_0 mc_read_selector_3 sel_read
+#1010
+off_read        mc_read_selector_1 mc_read_selector_3 sel_read
+#1011
+m[zoff]_read    mc_read_selector_0 mc_read_selector_1 mc_read_selector_3 sel_read
+#1100
+m[z]_read       mc_read_selector_2 mc_read_selector_3 sel_read
+#1101
+m[x]_read       mc_read_selector_0 mc_read_selector_2 mc_read_selector_3 sel_read
+#1110
+m[y]_read       mc_read_selector_1 mc_read_selector_2 mc_read_selector_3 sel_read
+#1111
+m[s]_read       mc_read_selector_0 mc_read_selector_1 mc_read_selector_2 mc_read_selector_3 sel_read
+
+arg_read       cmd_to_sel_read sel_read
+
+
+end
+
+section code
+
+#sfi    sect    ir    seq       command
+                                                            #fetch
+000     00      ****  0000      m[p]_read ir_write p++
+                                                            #0  0000 nop
+---     --      0000  0001      seq_rst
+                                                            #1  0001 seta arg
+---     --      0001  0001      arg_read a_write seq_rst
+                                                            #2  0010 puta arg
+---     --      0010  0001      arg_write a_read seq_rst
+                                                            #3  0011 lit arg b
+---     --      0011  0001      arg_write m[p]_read p++ seq_rst
+                                                            #4  0100 litw arg b b
+---     --      0100  0001      arg_write m[p]_read p++
+---     --      ----  0010      mc_write_selector_0 arg_write m[p]_read p++ seq_rst
+                                                            #5  0101 push
+                                                            #6  0110 pop
+                                                            #7  0111 pushw
+                                                            #8  1000 popw
+                                                            #9  1001 alu
+                                                            #10 1010 cmp
+                                                            #11 1011 jmp
+                                                            #12 1100 jmpX
+                                                            #13 1101 ret
+                                                # pop Z here?
+---     --      1101  0001      s++
+---     --      1101  0010      m[s]_read pl_write s++
+---     --      1101  0011      m[s]_read ph_write seq_rst
+
+
+                                                            #14 1110 call
+
+                                                            #15 1111 ext
+---     --      1111  0001      ext_set seq_rst
+                                                            
+
+                                                            #17 01 0001 derefwx arg
+---     01      0001  0001      m[x]_read tl_write x++
+---     01      0001  0010      m[x]_read th_write x--
+---     01      0001  0011      arg_write tl_read
+---     01      0001  0100      arg_write mc_write_selector_0 th_read seq_rst ext_rst
+
+
+
+
+
+                                                            
+####sect 10
+#movb -> arg
+#mov_xl->arg
+#...
+
+####sect 11
+#movwX -> arg
+#movwY -> arg
+#movwZ -> arg
+#movwS - >arg
+#...
+
+                                                                        #interrupt
+001     00      ****  0000      sh_read th_write di mmu_off super_mode
+---     00      ****  0001      sl_read tl_write                        #backup sp
+---     00      ****  0010      s_reset s--                             #set sp to 0xffff
+---     00      ****  0011      th_read m[s]_write s--                  #push all regs
+---     00      ****  0101      tl_read m[s]_write s--                
+---     00      ****  0110      a_read m[s]_write s--                
+---     00      ****  0111      b_read m[s]_write s--                
+---     00      ****  1000      F_read m[s]_write s--                
+---     00      ****  1001      xh_read m[s]_write s--                
+---     00      ****  1010      xl_read m[s]_write s--                
+---     00      ****  1011      ph_read m[s]_write s--                
+---     00      ****  1100      pl_read m[s]_write s--                
+---     00      ****  1101      yh_read m[s]_write s--                
+---     00      ****  1110      yl_read m[s]_write s--                
+---     00      ****  1111      zh_read m[s]_write s--                
+---     01      ****  0000      zl_read m[s]_write s--                
+---     01      ****  0001      off_read m[s]_write s-- p_reset                
+---     01      ****  0010      int_vec_read pl_write seq_rst ext_rst                
+
+
+
+
+end
