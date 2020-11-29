@@ -10,7 +10,7 @@
 int current_line = 0;
 char eof_hit = 0;
 
-char token[15];
+char token[64];
 
 static FILE * infile;
 
@@ -22,6 +22,29 @@ void parser_set_file(FILE * f) {
 
 void unget_token() {
   fl_unget = 1;
+}
+
+char get_quoted_text() {
+  int c;
+  static int inside_quoted = 0;
+  while(1) {
+    if((c = getc(infile)) == EOF) {
+      panic("quote expected, eof hit\n");
+    }
+    if(c == '\'') {
+      if(!inside_quoted) {
+        inside_quoted = 1;
+        continue;
+      } else {
+        inside_quoted = 0;
+        return 0;
+      }
+    }
+
+    if(inside_quoted) {
+      return c;
+    }
+  }
 }
 
 char get_next_token() {

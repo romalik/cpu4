@@ -31,115 +31,110 @@ void gen_instruction() {
   char arg_id;
   uint8_t opcode = 0;
   keyword_id = find_keyword(opcodes_0, token);
-  if(keyword_id > 15) {
-    panic("Bad keyword");
-  }
-  opcode = keyword_id << 4;
-  printf("kword id %d\n", keyword_id);
-  switch(keyword_id) {
-    case 0:
-    case 13:
-      emit(opcode);
-      break;
-    case 4:
-      //expect 2 bytes args
-      expect_args++;
-    case 3:
-      //expect 1 byte arg
-      expect_args++;
-    case 1:
-    case 2:
-    case 5:
-    case 6:
-    case 7:
-    case 8:
-      //no args expected
-      get_next_token();
-      if(eof_hit) {
-        panic("Unexpected EOF");
-      }
-      arg_id = find_keyword(args, token);
-      if(arg_id > 15) {
-        panic("Bad argument");
-      }
-      opcode |= arg_id;
-      emit(opcode);
-      return;
-    case 14:
-      //call
-      emit(opcode);
-      expect_args = 2;
-      return;
-    case 11:
-      //jmp, expect adr
-      expect_args = 2;
-    case 12:
-      //jmpX
-      get_next_token();
-      //COND_MASK (((!CF) << 3) | (CF << 2) | ((!ZF) << 1) | (ZF))
-      if(!strcmp(token,"z")) {
-        arg_id = 1;
-      } else if(!strcmp((token), "nz")) {
-        arg_id = 2;
-      } else if(!strcmp((token), "c")) {
-        arg_id = 4;
-      } else if(!strcmp((token), "nc")) {
-        arg_id = 8;
-      } else {
-        arg_id = 15;
-        unget_token();
-      }
-      opcode |= arg_id;
-      emit(opcode);
-      return;
-
-      break;
-    case 9:
-    case 10:
-      //alu and cmp
-      get_next_token();
-      if(eof_hit) {
-        panic("Unexpected EOF");
-      }
-      arg_id = find_keyword(alu_args, token);
-      if(arg_id > 15) {
-        panic("Bad argument");
-      }
-      opcode |= arg_id;
-      emit(opcode);
-      return;
-      break;
-    case 15:      
-      //ext
-      get_next_token();
-      keyword_id = find_keyword(opcodes_1, token);
-      if(keyword_id < 16) {
-        arg_id = 1;
+  if(keyword_id < 16) {
+    opcode = keyword_id << 4;
+    printf("kword id %d\n", keyword_id);
+    switch(keyword_id) {
+      case 0:
+      case 13:
+        emit(opcode);
+        break;
+      case 4:
+        //expect 2 bytes args
+        expect_args++;
+      case 3:
+        //expect 1 byte arg
+        expect_args++;
+      case 1:
+      case 2:
+      case 5:
+      case 6:
+      case 7:
+      case 8:
+        //no args expected
+        get_next_token();
+        if(eof_hit) {
+          panic("Unexpected EOF");
+        }
+        arg_id = find_keyword(args, token);
+        if(arg_id > 15) {
+          panic("Bad argument");
+        }
         opcode |= arg_id;
         emit(opcode);
-
-        switch(keyword_id) {
-          case 14:
-          //info
-            emit(keyword_id << 4);
-            expect_args = 1;
-            break;
-          case 15:
-          //halt
-            emit(keyword_id << 4);
-            break;
-          case 2:
-          default:
-          break;
+        return;
+      case 14:
+        //call
+        emit(opcode);
+        expect_args = 2;
+        return;
+      case 11:
+        //jmp, expect adr
+        expect_args = 2;
+      case 12:
+        //jmpX
+        get_next_token();
+        //COND_MASK (((!CF) << 3) | (CF << 2) | ((!ZF) << 1) | (ZF))
+        if(!strcmp(token,"z")) {
+          arg_id = 1;
+        } else if(!strcmp((token), "nz")) {
+          arg_id = 2;
+        } else if(!strcmp((token), "c")) {
+          arg_id = 4;
+        } else if(!strcmp((token), "nc")) {
+          arg_id = 8;
+        } else {
+          arg_id = 15;
+          unget_token();
         }
+        opcode |= arg_id;
+        emit(opcode);
+        return;
 
-      } else {
-        panic("Bad ext instruction");
-      }
-      break;
-    default:
-      break;
+        break;
+      case 9:
+      case 10:
+        //alu and cmp
+        get_next_token();
+        if(eof_hit) {
+          panic("Unexpected EOF");
+        }
+        arg_id = find_keyword(alu_args, token);
+        if(arg_id > 15) {
+          panic("Bad argument");
+        }
+        opcode |= arg_id;
+        emit(opcode);
+        return;
+        break;
+      default:
+        break;
+    }
+    return;
   }
+
+  keyword_id = find_keyword(opcodes_3, token);
+  if(keyword_id < 16) {
+    arg_id = 3;
+    opcode = (15 << 4) | arg_id;
+    emit(opcode);
+
+    switch(keyword_id) {
+      case 0:
+      //info
+        emit(keyword_id << 4);
+        expect_args = 1;
+        break;
+      case 15:
+      //halt
+      case 2:
+      default:      
+        emit(keyword_id << 4);
+        break;
+    }
+    return;
+  }
+  panic("Bad ext instruction");
 
 }
 
@@ -174,6 +169,11 @@ void assemble() {
         expect_args = 1;
       } else if(!strcmp(&token[1], "word")) {
         expect_args = 2;
+      } else if(!strcmp(&token[1], "ascii")) {
+        int c;
+        while((c = get_quoted_text()) != 0) {
+          emit(c);
+        }
       } else if(!strcmp(&token[1], "skip")) {
         get_next_token();
         current_pos += strtol(token,0,0);
@@ -192,9 +192,7 @@ void assemble() {
       if(expect_args > 1) {
         emit(0);
       }
-      if(expect_args) {
-        emit(token[1]);
-      }
+      emit(token[1]);
       if(!expect_args) {
         panic("Unexpected literal char!");
       }

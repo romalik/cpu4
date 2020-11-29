@@ -5,7 +5,7 @@ all: cpu4sim
 
 
 cpu4sim: sim.c 
-	$(CC) -o cpu4sim sim.c
+	$(CC) -o cpu4sim sim.c cb.c -lpthread
 
 install: all
 	install -d /opt/cpu4/bin

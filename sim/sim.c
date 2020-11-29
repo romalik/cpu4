@@ -1,7 +1,65 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/time.h>
+#include <signal.h>
+#include <termios.h>
+#include <pthread.h>
+
+#include "cb.h"
+
+uint64_t start_time;
+
+uint64_t gettime_ms() {
+    struct timeval te; 
+    gettimeofday(&te, NULL);
+    uint64_t milliseconds = te.tv_sec*1000LL + te.tv_usec/1000;
+    return milliseconds;
+}
+
+struct termios oldtermios;
+
+int ttyraw(int fd)
+{
+    struct termios newtermios;
+    if(tcgetattr(fd, &oldtermios) < 0)
+        return(-1);
+    newtermios = oldtermios;
+
+    newtermios.c_lflag &= ~(ECHO | ICANON | IEXTEN /*| ISIG*/);
+    newtermios.c_iflag &= ~(BRKINT /*| ICRNL*/ | INPCK | ISTRIP | IXON);
+    newtermios.c_cflag &= ~(CSIZE | PARENB);
+    newtermios.c_cflag |= CS8;
+    //newtermios.c_oflag &= ~(OPOST);
+    newtermios.c_cc[VMIN] = 1;
+    newtermios.c_cc[VTIME] = 0;
+    if(tcsetattr(fd, TCSAFLUSH, &newtermios) < 0)
+        return(-1);
+    return(0);
+}
+
+int ttyreset(int fd)
+{
+    if(tcsetattr(fd, TCSAFLUSH, &oldtermios) < 0)
+        return(-1);
+
+    return(0);
+}
+
+int halt = 0;
+
+//forward
+void terminate();
+
+void sigcatch(int sig)
+{
+    terminate();
+    exit(0);
+}
+
+
 /*
 N	bin	sel	    alu	opcode
 
@@ -23,8 +81,128 @@ e	1110	M[y]	NOP	call
 f	1111	M[s]	NOP	ext
 */
 
+/* memory map
+0x0000 - 0x3FFF ROM
+0x4000 - 0x7FFF IO
+0x8000 - 0xFFFF RAM
+*/
+
+struct Device {
+  uint16_t range_start;
+  uint16_t range_end;
+  uint16_t size;
+  void * data;
+  void (*write)(struct Device * dev, uint16_t addr, uint8_t val);
+  uint8_t (*read)(struct Device * dev, uint16_t addr);  
+};
 
 
+
+
+#define N_DEVICES 10
+struct Device * devices[N_DEVICES];
+
+struct Device rom;
+
+void memory_device_write(struct Device * dev, uint16_t addr, uint8_t val) {
+  ((uint8_t*)(dev->data))[addr - dev->range_start] = val;
+}
+
+uint8_t memory_device_read(struct Device * dev, uint16_t addr) {
+  return ((uint8_t*)(dev->data))[addr - dev->range_start];
+}
+
+
+struct circular_buffer * uart_cb;
+pthread_t uart_thread;
+pthread_mutex_t uart_cb_lock;
+
+
+void * uart_thread_worker(void * args) {
+  int c;
+  while(!halt) {
+    read(0, &c, 1);
+    pthread_mutex_lock(&uart_cb_lock);
+    cb_push(uart_cb, c);
+    pthread_mutex_unlock(&uart_cb_lock);
+  }
+  return NULL;
+}
+
+
+void uart_device_write(struct Device * dev, uint16_t addr, uint8_t val) {
+  printf("%c", val);
+  fflush(stdout);
+}
+
+uint8_t uart_device_read(struct Device * dev, uint16_t addr) {
+  int c = 0;
+  pthread_mutex_lock(&uart_cb_lock);
+  if(uart_cb->size) {
+    c = cb_pop(uart_cb);
+  }
+  pthread_mutex_unlock(&uart_cb_lock);
+  
+  return c;
+}
+
+
+struct Device * create_uart() {
+  struct Device * uart;
+  uart = (struct Device *)malloc(sizeof(struct Device));
+  uart->size = 0x0001;
+  uart->range_start = 0x4000;
+  uart->range_end = 0x4000;
+  uart->data = 0;
+  uart->write = &uart_device_write;
+  uart->read = &uart_device_read;
+  
+  uart_cb = cb_create(128);
+
+  pthread_mutex_init(&uart_cb_lock, NULL);
+  pthread_create(&uart_thread, NULL, uart_thread_worker, NULL);
+
+  return uart;
+}
+
+void init_devices() {
+  struct Device * ram;
+  memset(devices, 0, sizeof(struct Device *) * N_DEVICES);
+
+  rom.size = 0x4000;
+  rom.range_start = 0x0000;
+  rom.range_end = 0x3FFF;
+  rom.data = malloc(rom.size);
+  rom.write = &memory_device_write;
+  rom.read = &memory_device_read;
+  devices[0] = &rom;
+
+  ram = (struct Device *)malloc(sizeof(struct Device));
+  ram->size = 0x8000;
+  ram->range_start = 0x8000;
+  ram->range_end = 0xFFFF;
+  ram->data = malloc(ram->size);
+  ram->write = &memory_device_write;
+  ram->read = &memory_device_read;
+  devices[1] = ram;
+
+  devices[2] = create_uart();
+
+
+
+}
+
+struct Device * select_device_by_addr(uint16_t addr) {
+  int i;
+  for(i = 0; i<N_DEVICES; i++) {
+    if(devices[i]) {
+      if(devices[i]->range_start <= addr && devices[i]->range_end >= addr) {
+        return devices[i];
+      }
+    }
+  }
+  return NULL;
+}
 
 struct regs {
   uint8_t a;
@@ -44,16 +222,24 @@ struct regs {
 
 };
 
-int halt = 0;
 
-uint8_t memory_image[64*1024];
+
 
 uint8_t mem_read(uint16_t addr) {
-  return memory_image[addr];
+  struct Device * dev;
+  dev = select_device_by_addr(addr);
+  if(dev) {
+    return dev->read(dev, addr);
+  }
+  return 0;
 }
 
 void mem_write(uint16_t addr, uint8_t val) {
-  memory_image[addr] = val;
+  struct Device * dev;
+  dev = select_device_by_addr(addr);
+  if(dev) {
+    dev->write(dev, addr, val);
+  }
 }
 
 struct regs r;
@@ -330,12 +516,24 @@ void op_err() {
 }
 
 void op_sim_halt() {
-  printf("Simulation halt instruction!\n");  
+  printf("Sim halt!\n");  
   halt = 1;
 }
 
 void op_sim_info() {
-  printf(">>>>> SIM INFO %d!\n", ARG);  
+  printf(">>>>> SIM INFO %d!\n", mem_read(r.p));
+  r.p++;  
+  r.sect = 0;
+  sleep(1);
+}
+
+void op_x_pp() {
+  r.x++;
+  r.sect = 0;
+}
+
+void op_y_pp() {
+  r.y++;
   r.sect = 0;
 }
 
@@ -353,7 +551,7 @@ op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 
   /*sect 11*/
-op_sim_info,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
+op_sim_info,   op_x_pp,   op_y_pp,   op_err, op_err,   op_err,   op_err,   op_err,
 op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_sim_halt,
 
 };
@@ -412,7 +610,7 @@ fn: 19 info 1
 21 ret
 */
 
-
+/*
 uint8_t prog[] = {
   0x30, 0x02,
   0x31, 0x03,
@@ -429,24 +627,67 @@ uint8_t prog[] = {
   0xd0
 
 };
+*/
+
+void init_signals() {
+    signal(SIGINT,sigcatch);
+    signal(SIGQUIT,sigcatch);
+    signal(SIGTERM,sigcatch);
+}
 
 
-int main() {
+void terminate() {
+  uint64_t end_time = gettime_ms();
+  uint64_t elapsed = end_time - start_time;
+
+  double ips = 1000 * (double)cycle_counter / elapsed;
+
+  uint64_t ns_per_instruction = elapsed * 1000000 / cycle_counter;
+
+  ttyreset(0);
+
+
+  printf("cycles: %zu\nips: %f\nns per instr: %zu\n", cycle_counter, ips, ns_per_instruction);
+}
+
+int main(int argc, char ** argv) {
   int i;
-  memset(memory_image, 0, 64*1024);
+  FILE * fp = fopen(argv[1], "r");
+  int step = 0;
+  if(argc > 2) {
+    if(!strcmp(argv[2], "-d")) {
+      step = 1;
+    }
+  }
 
-  memcpy(memory_image, prog, sizeof(prog));
+  init_signals();
+  ttyraw(0);
 
+  init_devices();
 
+  memset(rom.data, 0, rom.size);
+
+  fread(rom.data, 1, rom.size, fp);
+
+  fclose(fp);
 
 
   r.sect = 0;
   r.p = 0;
 
+  start_time = gettime_ms();
+
   while(!halt) {
     cycle();
-    print_state();
-    sleep(1);
+    if(step) {
+      print_state();
+      sleep(1);
+      start_time += 1000;
+    }
   }
+
+  terminate();
+
+  return 0;
 
 }

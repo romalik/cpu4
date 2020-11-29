@@ -4,12 +4,13 @@
 extern int current_line;
 extern char eof_hit;
 
-extern char token[15];
+extern char token[];
 
 void parser_set_file(FILE * f);
 
 char get_next_token();
 void skip_comment();
 void unget_token();
+char get_quoted_text();
 
 #endif
