@@ -42,7 +42,7 @@ section control_word
 28  H       di
 29  H       mmu_on
 30  H       mmu_off
-31  H       ds
+31  H       ds #data segment?
 
 32  L       s++
 33  L       s--
@@ -58,7 +58,7 @@ section control_word
 42  L       th_read
 43  L       th_write
 44  H       s_reset
-45  H       p_reset
+45  H       p_reset #??? what is it?
 46  H       user_mode
 47  H       super_mode
 
@@ -90,8 +90,10 @@ zh_write        mc_write_selector_0 mc_write_selector_3 sel_write
 off_write       mc_write_selector_1 mc_write_selector_3 sel_write
 #1011
 m[zoff]_write   mc_write_selector_0 mc_write_selector_1 mc_write_selector_3 sel_write
+
 #1100
-m[z]_write      mc_write_selector_2 mc_write_selector_3 sel_write
+#reserve (was m[z]_write)      mc_write_selector_2 mc_write_selector_3 sel_write
+
 #1101
 m[x]_write      mc_write_selector_0 mc_write_selector_2 mc_write_selector_3 sel_write
 #1110
@@ -125,8 +127,10 @@ zh_read         mc_read_selector_0 mc_read_selector_3 sel_read
 off_read        mc_read_selector_1 mc_read_selector_3 sel_read
 #1011
 m[zoff]_read    mc_read_selector_0 mc_read_selector_1 mc_read_selector_3 sel_read
+
 #1100
-m[z]_read       mc_read_selector_2 mc_read_selector_3 sel_read
+#reserve (was m[z]_read)       mc_read_selector_2 mc_read_selector_3 sel_read
+
 #1101
 m[x]_read       mc_read_selector_0 mc_read_selector_2 mc_read_selector_3 sel_read
 #1110

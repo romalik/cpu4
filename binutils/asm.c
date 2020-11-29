@@ -73,19 +73,27 @@ void gen_instruction() {
         expect_args = 2;
       case 12:
         //jmpX
-        get_next_token();
-        //COND_MASK (((!CF) << 3) | (CF << 2) | ((!ZF) << 1) | (ZF))
-        if(!strcmp(token,"z")) {
-          arg_id = 1;
-        } else if(!strcmp((token), "nz")) {
-          arg_id = 2;
-        } else if(!strcmp((token), "c")) {
-          arg_id = 4;
-        } else if(!strcmp((token), "nc")) {
-          arg_id = 8;
-        } else {
-          arg_id = 15;
-          unget_token();
+        // populate condition bits 
+        arg_id = 0;
+        while(1) {
+          get_next_token();
+          //COND_MASK (((!CF) << 3) | (CF << 2) | ((!ZF) << 1) | (ZF))
+          if(!strcmp(token,"z")) {
+            arg_id |= 1;
+          } else if(!strcmp((token), "nz")) {
+            arg_id = 2;
+          } else if(!strcmp((token), "c")) {
+            arg_id = 4;
+          } else if(!strcmp((token), "nc")) {
+            arg_id = 8;
+          } else {            
+            if(arg_id == 0) { 
+              //jmp with no condition
+              arg_id = 15;
+            }
+            unget_token();
+            break;
+          }
         }
         opcode |= arg_id;
         emit(opcode);

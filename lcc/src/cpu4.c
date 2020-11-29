@@ -4,7 +4,10 @@
 static char rcsid[] = "$Id: bytecode.c,v 1.1 2002/08/28 23:12:41 drh Exp $";
 
 
-int current_virtual_register = 0;
+int current_sp_offset = 0;
+int current_func_retsize = 0;
+
+#define debug_all 0
 
 static void I(segment)(int n) {
 	static int cseg;
@@ -73,9 +76,9 @@ static void I(defsymbol)(Symbol p) {
 		default: assert(0);
 		}
 	else if (p->scope >= LOCAL && p->sclass == STATIC)
-		p->x.name = stringf("$%d", genlabel(1));
+		p->x.name = stringf("__local_static_%d", genlabel(1));
 	else if (p->scope == LABELS || p->generated)
-		p->x.name = stringf("$%s", p->name);
+		p->x.name = stringf("__label_%s", p->name);
 	else
 		p->x.name = p->name;
 }
@@ -84,7 +87,19 @@ static void I(defsymbol)(Symbol p) {
 #define d_start() print("; %s %s {\n", opname(p->op), (p->syms)?((p->syms[0])?(p->syms[0]->x.name?p->syms[0]->x.name:""):("")):"");
 #define d_end()   print("; } %s %s\n;\n", opname(p->op), (p->syms)?((p->syms[0])?(p->syms[0]->x.name?p->syms[0]->x.name:""):("")):"");
 
+/*
+access locals: off(X) = current_off + n_spill + n_locals - X ; m[SP-off]
+access args  : off(X) = current_off + n_spill + n_locals + 2(retaddr) + size(retval??) + 1 + X ; m[SP-off]
+access retval : off(X) = current_off + n_spill + n_locals + 2(retaddr) + 1
 
+n_locals = global maxoffset
+*/
+
+#define n_spill 4
+
+#define get_local_sp_offset(X) (current_sp_offset + n_spill + maxoffset - (X))
+#define get_arg_sp_offset(X) (current_sp_offset + n_spill + maxoffset + 2 + current_func_retsize + 1 + (X))
+#define get_retval_sp_offset() (current_sp_offset + n_spill + maxoffset + 2 + 1)
 
 #define no_reg 0xff
 
@@ -110,14 +125,18 @@ static char * reg8names[] = {
 static unsigned char reg16[nreg16] = {0,0};
 static unsigned char reg8[nreg8] = {0,0,0,0};
 static char * reg16names[] = {
-	"x","y"
+	"x","y",
+	"so" //inaccessible
 };
 static char * reg16memnames[] = {
-	"m[x]","m[y]"
+	"m[x]","m[y]",
+	"m[so]"
 };
 static char * reg8names[] = {
-	"xl","xh","yl","yh"
+	"xl","xh","yl","yh",
+	"sol","soh" //inaccessible
 };
+#define reg_so 2
 #endif
 
 
@@ -174,18 +193,25 @@ unsigned char alloc_reg8() {
 		if(reg8[i] == 0) {
 			reg8[i] = 1;
 			reg16[i/2] = 1;
+#if debug_all
 			print("; alloc reg8 %s\n", get8name(i));
 			dump_reg_alloc();
+#endif
 			return i;
 		}
 	}
+#if debug_all
 	print("; alloc reg8 %s\n", get8name(no_reg));
 	dump_reg_alloc();
+#endif
 	return no_reg;
 }
 void free_reg8(unsigned char reg) {
+#if debug_all
 	print("; free reg8 %s\n", get8name(reg));
+#endif
 	if(reg == no_reg) return;
+	if(reg >= nreg8) return; //unfreeable
 
 	assert(reg8[reg] == 1);
 
@@ -200,7 +226,9 @@ void free_reg8(unsigned char reg) {
 			reg16[reg/2] = 0;
 		}
 	}
+#if debug_all
 	dump_reg_alloc();
+#endif
 }
 
 unsigned char alloc_reg16() {
@@ -211,14 +239,18 @@ unsigned char alloc_reg16() {
 				reg16[i] = 1;
 				reg8[i*2] = 1;
 				reg8[i*2 + 1] = 1;
+#if debug_all
 				print("; alloc reg16 %s\n", get16name(i));
 				dump_reg_alloc();
+#endif
 				return i;
 			}
 		}
 	}
+#if debug_all
 	print("; alloc reg16 %s\n", get16name(no_reg));
 	dump_reg_alloc();
+#endif
 	return no_reg;
 }
 void spill_reg16(unsigned char reg) {
@@ -234,15 +266,19 @@ void unspill_reg16(unsigned char reg) {
 }
 
 void free_reg16(unsigned char reg) {
+#if debug_all
 	print("; free reg16 %s\n", get16name(reg));
+#endif
 	if(reg == no_reg)	return;
+	if(reg >= nreg16) return; //unfreeable
 	assert(reg16[reg] == 1);
 
 	reg16[reg] = 0;
 	reg8[reg*2] = 0;
 	reg8[reg*2+1] = 0;
+#if debug_all
 	dump_reg_alloc();
-
+#endif
 }
 int dump_tree = 0;
 int ident = 0;
@@ -252,6 +288,7 @@ static unsigned char dumptree(Node p) {
 	unsigned char reg_arg_1, reg_arg_2;
 	unsigned char size_from, size_to;
 	unsigned char spilled = 0;
+	char * cmd;
 	int i;
 
 	if(dump_tree) {
@@ -293,13 +330,10 @@ static unsigned char dumptree(Node p) {
 	*/
 		not_implemented()
 	case RET+V:
-	/*
 		assert(!p->kids[0]);
 		assert(!p->kids[1]);
-		print("%s\n", opname(p->op));
-		return;
-	*/
-		not_implemented()
+		print("ret\n");
+		return no_reg;
 	}
 
 	switch (generic(p->op)) {
@@ -331,7 +365,22 @@ static unsigned char dumptree(Node p) {
 		d_end();
 		return target_reg;
 	case ADDRG: 
-		not_implemented()
+		assert(!p->kids[0]);
+		assert(!p->kids[1]);
+		assert(p->syms[0] && p->syms[0]->x.name);
+		//assert(opsize(p->op) == 2);
+		
+		d_start();
+		reg_addr = alloc_reg16();
+
+		if(reg_addr == no_reg) {
+			print("litw a\n");
+			print("pushw a\n");
+		} else {
+			print("litw %s\n", get16name(reg_addr));
+		}
+		d_end();
+		return reg_addr;
 	case ADDRF: 
 		assert(!p->kids[0]);
 		assert(!p->kids[1]);
@@ -341,18 +390,20 @@ static unsigned char dumptree(Node p) {
 		d_start();
 		reg_addr = alloc_reg16();
 
-		print("seta zl\n");
-		print("lit b %s\n", p->syms[0]->x.name);
-		print("alu sub\n");
+		print("; >> manual arg address calculation!\n");
+		print("seta sl\n");
+		print("lit b %d\n", get_arg_sp_offset(atoi(p->syms[0]->x.name)));
+		
+		print("alu add\n");
 		if(reg_addr == no_reg) {
 			print("push a\n");
 		} else {
 			print("puta %s\n", get16name_low(reg_addr));
 		}
 
-		print("seta zh\n");
+		print("seta sh\n");
 		print("lit b 0\n");
-		print("alu sbc\n");
+		print("alu adc\n");
 		if(reg_addr == no_reg) {
 			print("push a\n");
 		} else {
@@ -372,8 +423,9 @@ static unsigned char dumptree(Node p) {
 		
 		reg_addr = alloc_reg16();
 
-		print("seta zl\n");
-		print("lit b %s\n", p->syms[0]->x.name);
+		print("; >> manual local address calculation!\n");
+		print("seta sl\n");
+		print("lit b %d\n", get_local_sp_offset(atoi(p->syms[0]->x.name)));
 		print("alu add\n");
 		if(reg_addr == no_reg) {
 			print("push a\n");
@@ -381,7 +433,7 @@ static unsigned char dumptree(Node p) {
 			print("puta %s\n", get16name_low(reg_addr));
 		}
 
-		print("seta zh\n");
+		print("seta sh\n");
 		print("lit b 0\n");
 		print("alu adc\n");
 		if(reg_addr == no_reg) {
@@ -394,7 +446,13 @@ static unsigned char dumptree(Node p) {
 
 		return reg_addr;
 	case LABEL:
-		not_implemented()
+		assert(!p->kids[0]);
+		assert(!p->kids[1]);
+		assert(p->syms[0] && p->syms[0]->x.name);
+		d_start();
+		print("%s:\n", p->syms[0]->x.name);
+		d_end();
+		return no_reg;
 /*
 		assert(!p->kids[0]);
 		assert(!p->kids[1]);
@@ -437,6 +495,8 @@ static unsigned char dumptree(Node p) {
 					print("puta %s\n", get8name(target_reg));
 				}
 
+			} else {
+				not_implemented()
 			}
 		} else if((opsize(p->op)) == 2) { //to size 2
 			if(p->syms[0]->u.c.v.i == 1) { //from size 1
@@ -464,6 +524,8 @@ static unsigned char dumptree(Node p) {
 				print("; bypass conversion sz2-sz2\n");
 				target_reg = reg_val;
 
+			} else {
+				not_implemented()
 			}
 		} else {
 			not_implemented();
@@ -498,20 +560,26 @@ static unsigned char dumptree(Node p) {
 		}
 		d_end();
 		return no_reg;
-	case BCOM: 
-		not_implemented()
-	case NEG: 
-		not_implemented()
+
 	case INDIR: 
 		assert(p->kids[0]);
 		assert(!p->kids[1]);
-		reg_addr = dumptree(p->kids[0]);
+
+		if((generic(p->kids[0]->op)) == ADDRF) {
+			reg_addr = reg_so;
+			print("lit off %d\n", get_arg_sp_offset(atoi(p->kids[0]->syms[0]->x.name)));
+		} else if((generic(p->kids[0]->op)) == ADDRL) {
+			reg_addr = reg_so;
+			print("lit off %d\n", get_local_sp_offset(atoi(p->kids[0]->syms[0]->x.name)));
+		} else {
+			reg_addr = dumptree(p->kids[0]);
+		}
 
 		d_start();
 		if(reg_addr == no_reg) {
 			reg_addr = alloc_reg16();
 			if(reg_addr == no_reg) {
-				print("; failed to alloc reg16\n");
+				print("; failed to alloc reg16 for reg_addr in indir\n");
 				assert(0);
 			}
 			print("popw %s\n", get16name(reg_addr));
@@ -556,9 +624,56 @@ static unsigned char dumptree(Node p) {
 		d_end();
 		return target_reg;
 	case JUMP: 
-		not_implemented()
+		assert(p->kids[0]);
+		assert(!p->kids[1]);
+		
+
+		if((generic(p->kids[0]->op)) == ADDRG) { //put address as immediate literal
+			d_start();
+			print("jmp $%s\n", p->kids[0]->syms[0]->x.name);
+		} else {
+			reg_addr = dumptree(p->kids[0]);
+			d_start();
+			if(reg_addr != no_reg) {
+				print("pushw %s\n", get16name(reg_addr));
+				free_reg16(reg_addr);
+			}
+			print("jmps ; !!!! assume jump_from_stack!\n");
+		}
+
+
+
+
+		d_end();
+		return no_reg;
 	case RET:
-		not_implemented()
+		assert(p->kids[0]);
+		assert(!p->kids[1]);
+
+		reg_val = dumptree(p->kids[0]);
+		d_start();
+
+
+		print("; >> Access frame!\n");
+		if((opsize(p->op) == 1)) {
+			print("; store %s to frame as retval\n", get8name(reg_val));
+			if(reg_val == no_reg) {
+				print("pop a\n");
+			} else {
+				print("seta %s\n", get8name(reg_val));
+			}
+			print("lit off %d\n", get_retval_sp_offset());
+			print("puta m[so]\n");
+			free_reg8(reg_val);
+		} else if((opsize(p->op) == 2)) {
+			print("; store %s to frame as retval\n", get16name(reg_val));
+			free_reg16(reg_val);
+		} else {
+			not_implemented()
+		}
+		
+		d_end();
+		return no_reg;
 /*
 		assert(p->kids[0]);
 		assert(!p->kids[1]);
@@ -588,7 +703,7 @@ static unsigned char dumptree(Node p) {
 			if(reg_addr != no_reg) {
 				print("pushw %s\n", get16name(reg_addr));
 				free_reg16(reg_addr);
-				print("call_st ; !!!! assume call-from-stack\n");
+				print("calls ; !!!! assume call-from-stack\n");
 			}
 		}
 
@@ -609,6 +724,7 @@ static unsigned char dumptree(Node p) {
 				assert(0);
 			}
 		} else {
+			target_reg = no_reg;
 			not_implemented()
 		}
 
@@ -627,16 +743,19 @@ static unsigned char dumptree(Node p) {
 		assert(p->kids[0]);
 		assert(p->kids[1]);
 		reg_val = dumptree(p->kids[1]);
-		reg_addr = dumptree(p->kids[0]);
+
+		if((generic(p->kids[0]->op)) == ADDRF) {
+			reg_addr = reg_so;
+			print("lit off %d\n", get_arg_sp_offset(atoi(p->kids[0]->syms[0]->x.name)));
+		} else if((generic(p->kids[0]->op)) == ADDRL) {
+			reg_addr = reg_so;
+			print("lit off %d\n", get_local_sp_offset(atoi(p->kids[0]->syms[0]->x.name)));
+		} else {
+			reg_addr = dumptree(p->kids[0]);
+		}
 
 		d_start();
 		if((opsize(p->op)) == 1) {
-			if(reg_val == no_reg) {
-				print("pop a\n");
-			} else {
-				print("seta %s\n", get8name(reg_val));
-			}
-
 			if(reg_addr == no_reg) {
 				reg_addr = alloc_reg16();
 				if(reg_addr == no_reg) {
@@ -646,13 +765,17 @@ static unsigned char dumptree(Node p) {
 				print("popw %s\n", get16name(reg_addr));
 			}
 
+			if(reg_val == no_reg) {
+				print("pop a\n");
+			} else {
+				print("seta %s\n", get8name(reg_val));
+			}
+
 			print("puta %s\n", get16memreg(reg_addr));
 			free_reg8(reg_val);
 			free_reg16(reg_addr);
 		} else if(opsize(p->op) == 2) {
 			if(reg_val == no_reg) {
-				print("popw a\n");
-
 				if(reg_addr == no_reg) {
 					reg_addr = alloc_reg16();
 					if(reg_addr == no_reg) {
@@ -661,6 +784,8 @@ static unsigned char dumptree(Node p) {
 					}
 					print("popw %s\n", get16name(reg_addr));
 				}
+
+				print("popw a\n");
 
 				print("puta %s ;check endianness\n", get16memreg(reg_addr));
 				print("seta b\n");
@@ -698,6 +823,10 @@ static unsigned char dumptree(Node p) {
 		not_implemented()
 	case LSH:
 		not_implemented()
+	case BCOM: 
+		not_implemented()
+	case NEG: 
+		not_implemented()
 	case BOR: 
 	case BAND: 
 	case BXOR: 
@@ -707,7 +836,29 @@ static unsigned char dumptree(Node p) {
 		assert(p->kids[1]);
 		reg_arg_1 = dumptree(p->kids[0]);
 		reg_arg_2 = dumptree(p->kids[1]);
-		
+
+		switch(generic(p->op)) {
+			case BOR:
+				cmd = "or";
+				break;
+			case BAND: 
+				cmd = "and";
+				break;
+			case BXOR: 
+				cmd = "xor";
+				break;
+			case ADD: 
+				cmd = "add";
+				break;
+			case SUB: 
+				cmd = "sub";
+				break;
+			default:
+				assert(0);
+				break;				
+		}
+
+
 		d_start();
 		if(opsize(p->op) == 1) {
 			if(reg_arg_2 == no_reg) {
@@ -722,25 +873,7 @@ static unsigned char dumptree(Node p) {
 				print("seta %s\n", get8name(reg_arg_1));
 			}
 
-			switch(specific(p->op)) {
-				case BOR:
-					print("alu or\n");
-					break;
-				case BAND: 
-					print("alu and\n");
-					break;
-				case BXOR: 
-					print("alu xor\n");
-					break;
-				case ADD: 
-					print("alu add\n");
-					break;
-				case SUB: 
-					print("alu sub\n");
-					break;
-				default:
-					break;				
-			}
+			print("alu %s\n", cmd);
 
 			target_reg = alloc_reg8();
 			if(target_reg == no_reg) {
@@ -751,31 +884,37 @@ static unsigned char dumptree(Node p) {
 			free_reg8(reg_arg_1);
 			free_reg8(reg_arg_2);
 		} else if(opsize(p->op) == 2) {
-			if(reg_arg_1 == no_reg && reg_arg_2 == no_reg) {
-				print("; both sources for alu16 are on stack, fail\n");
-				assert(0);
-			}
-
 
 			if(reg_arg_2 == no_reg) {
 				reg_arg_2 = alloc_reg16();
 				if(reg_arg_2 == no_reg) {
 					print("; failed to alloc reg16 for alu operation\n");
 					//assert(0);
+				} else {
+					print("popw %s\n", get16name(reg_arg_2));
 				}
-				print("popw %s\n", get16name(reg_arg_2));
 			}
 			if(reg_arg_1 == no_reg) {
 				reg_arg_1 = alloc_reg16();
 				if(reg_arg_1 == no_reg) {
 					print("; failed to alloc reg16 for alu operation\n");
 					//assert(0);
+				} else {
+					print("popw %s\n", get16name(reg_arg_1));
 				}
-				print("popw %s\n", get16name(reg_arg_1));
 			}
 
-
 			target_reg = alloc_reg16();
+
+			if((
+				((reg_arg_1 == no_reg)?1:0) +
+				((reg_arg_2 == no_reg)?1:0) +
+				((target_reg == no_reg)?1:0)
+			) > 1) {
+				print("; more than one of reg16 are on stack for alu16, fail\n");
+				assert(0);
+			}
+
 
 			if(reg_arg_2 == no_reg) {
 				print("pop b ; assume popped low!!\n");
@@ -791,7 +930,7 @@ static unsigned char dumptree(Node p) {
 				print("puta b\n");
 			}
 
-			print("alu add ;!!!!!\n");
+			print("alu %s\n");
 			
 			if(target_reg == no_reg) {
 				print("push a\n");
@@ -812,7 +951,17 @@ static unsigned char dumptree(Node p) {
 				print("seta %s\n", get16name_high(reg_arg_1));
 			}
 
-			print("alu adc ;!!!!!\n");
+			switch(generic(p->op)) {
+				case ADD:
+					print("alu adc\n");
+					break;
+				case SUB:
+					print("alu sbc\n");
+					break;
+				default:
+					print("alu %s\n", cmd);
+					break;
+			}
 			
 			if(target_reg == no_reg) {
 				print("push a\n");
@@ -845,17 +994,120 @@ static unsigned char dumptree(Node p) {
 		return;
 */
 	case EQ: 
-		not_implemented()
 	case NE: 
-		not_implemented()
 	case GT: 
-		not_implemented()
 	case GE: 
-		not_implemented()
 	case LE: 
-		not_implemented()
 	case LT:
-		not_implemented()
+
+		assert(p->kids[0]);
+		assert(p->kids[1]);
+		assert(p->syms[0]);
+		assert(p->syms[0]->x.name);
+
+		reg_arg_1 = dumptree(p->kids[0]);
+		reg_arg_2 = dumptree(p->kids[1]);
+
+		d_start();
+
+		switch(generic(p->op)) {
+			case EQ:
+				cmd = "z";
+				break;
+			case NE:
+				cmd = "nz";
+				break;
+			case GT:
+				cmd = "nz nc";
+				break;
+			case GE:
+				cmd = "z nc";
+				break;
+			case LE:
+				cmd = "z c";
+				break;
+			case LT:
+				cmd = "nz c";
+				break;
+			default:
+				assert(0);
+		}
+
+		if((opsize(p->op)) == 1) {
+			if(reg_arg_2 == no_reg) {
+				print("pop b\n");
+			} else {
+				print("seta %s\n", get8name(reg_arg_2));
+				print("puta b\n");
+				free_reg8(reg_arg_2);
+			}
+
+
+			if(reg_arg_1 == no_reg) {
+				print("pop a\n");
+			} else {
+				print("seta %s\n", get8name(reg_arg_1));
+				free_reg8(reg_arg_1);
+			}
+
+			print("cmp sub\n");
+			print("jmp %s $%s\n", cmd, p->syms[0]->x.name);
+
+		} else if((opsize(p->op)) == 2) {
+			if(reg_arg_2 == no_reg) {
+				reg_arg_2 = alloc_reg16();
+				if(reg_arg_2 == no_reg) {
+					print("; can not alloc reg16 for branch instruction\n");
+					assert(0);
+				}
+				print("popw %s\n", get16name(reg_arg_2));
+			}
+
+			if(reg_arg_1 == no_reg) {
+				reg_arg_1 = alloc_reg16();
+				if(reg_arg_1 == no_reg) {
+					print("; can not alloc reg16 for branch instruction\n");
+					assert(0);
+				}
+				print("popw %s\n", get16name(reg_arg_1));
+			}
+
+			// compare high bytes, if equal - jump to low byte comparison
+			print("seta %s\n", get16name_high(reg_arg_2));
+			print("puta b\n");
+			print("seta %s\n", get16name_high(reg_arg_1));
+
+			print("cmp sub\n");
+
+			i = genlabel(1);
+
+			print("jmp z __jump_label__%d\n", i);
+			if((generic(p->op))!=EQ) print("jmp %s $%s\n", cmd, p->syms[0]->x.name);
+			print("jmp __jump_label_2__%d\n", i);
+			print("__jump_label__%d:\n", i);
+
+			// compare low bytes if high equal
+
+			print("seta %s\n", get16name_low(reg_arg_2));
+			print("puta b\n");
+			print("seta %s\n", get16name_low(reg_arg_1));
+
+			print("cmp sub\n");
+			print("jmp %s $%s\n", cmd, p->syms[0]->x.name);
+
+			print("__jump_label_2__%d:\n", i);
+
+			free_reg16(reg_arg_1);
+			free_reg16(reg_arg_2);
+
+		} else {
+			not_implemented()
+		}
+
+		d_end();
+
+		return no_reg;
+
 /*
 		assert(p->kids[0]);
 		assert(p->kids[1]);
@@ -900,6 +1152,7 @@ static void I(export)(Symbol p) {
 
 static void I(function)(Symbol f, Symbol caller[], Symbol callee[], int ncalls) {
 	int i;
+	
 
 	(*IR->segment)(CODE);
 	offset = 0;
@@ -911,9 +1164,11 @@ static void I(function)(Symbol f, Symbol caller[], Symbol callee[], int ncalls) 
 	}
 	maxargoffset = maxoffset = argoffset = offset = 0;
 	gencode(caller, callee);
-	print("proc %s %d %d\n", f->x.name, maxoffset, maxargoffset);
+	//wierd f->type->type->size to get return size
+	current_func_retsize = f->type->type->size;
+	print("proc %s [%d] %d %d\n", f->x.name, f->type->type->size, maxoffset, maxargoffset);
 	emitcode();
-	print("endproc %s %d %d\n", f->x.name, maxoffset, maxargoffset);
+	print("endproc\n");// %s %d %d\n", f->x.name, maxoffset, maxargoffset);
 
 }
 
@@ -1018,8 +1273,8 @@ Interface cpu4IR = {
 	1, 1, 0,	/* char */
 	2, 1, 0,	/* short */
 	2, 1, 0,	/* int */
-	2, 1, 0,	/* long */
-	2, 1, 0,	/* long long */
+	4, 1, 0,	/* long */
+	4, 1, 0,	/* long long */
 	2, 1, 1,	/* float */
 	2, 1, 1,	/* double */
 	2, 1, 1,	/* long double */
