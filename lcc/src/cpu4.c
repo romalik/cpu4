@@ -81,14 +81,14 @@ static void I(defsymbol)(Symbol p) {
 }
 
 #define not_implemented() print("; not implemented (%s)\n", opname(p->op)); return no_reg;
-#define d_start() print("; %s %s {\n", opname(p->op), ((p->syms[0])?(p->syms[0]->x.name):("")));
-#define d_end()   print("; } %s %s\n;\n", opname(p->op), ((p->syms[0])?(p->syms[0]->x.name):("")));
+#define d_start() print("; %s %s {\n", opname(p->op), (p->syms)?((p->syms[0])?(p->syms[0]->x.name?p->syms[0]->x.name:""):("")):"");
+#define d_end()   print("; } %s %s\n;\n", opname(p->op), (p->syms)?((p->syms[0])?(p->syms[0]->x.name?p->syms[0]->x.name:""):("")):"");
 
 
 
 #define no_reg 0xff
 
-#define lots_of_regs 1
+#define lots_of_regs 0
 
 #if lots_of_regs
 #define nreg16 4
@@ -244,7 +244,7 @@ void free_reg16(unsigned char reg) {
 	dump_reg_alloc();
 
 }
-
+int dump_tree = 0;
 int ident = 0;
 static unsigned char dumptree(Node p) {
 	unsigned char target_reg;
@@ -254,13 +254,30 @@ static unsigned char dumptree(Node p) {
 	unsigned char spilled = 0;
 	int i;
 
-	for(i = 0; i<ident; i++) print(" ");
-	print("-> %s %s\n", opname(p->op), (p->syms)?((p->syms[0])?(p->syms[0]->x.name?p->syms[0]->x.name:""):("")):"");
-	ident += 3;
-	if(p->kids[0]) dumptree(p->kids[0]);
-	if(p->kids[1]) dumptree(p->kids[1]);
-	ident -= 3;
-	return 0;
+	if(dump_tree) {
+
+		for(i = 0; i<ident; i++) print(" ");
+		print("-> %s %s count: %d\n", 
+			opname(p->op), (p->syms)?((p->syms[0])?(p->syms[0]->x.name?p->syms[0]->x.name:""):("")):"", p->count);
+
+		ident += 3;
+		if(generic(p->op) == CALL) {
+			for(i = 0; i<ident-3; i++) print(" ");
+			print(" |_ args:\n");
+			for(i = 0; i<15; i++) {
+				assert(p->args);
+				if(!p->args[i]) break;
+				dumptree(p->args[i]);
+			}
+			for(i = 0; i<ident-3; i++) print(" ");
+			print(" |_ address:\n");
+		}
+
+		if(p->kids[0]) dumptree(p->kids[0]);
+		if(p->kids[1]) dumptree(p->kids[1]);
+		ident -= 3;
+		return 0;
+	}
 
 
 	switch (specific(p->op)) {
@@ -464,9 +481,23 @@ static unsigned char dumptree(Node p) {
 	case ARG: 
 		assert(p->kids[0]);
 		assert(!p->kids[1]);
-		dumptree(p->kids[0]);
-		print(">>>>>>>>>>>>>>>>>>> %s\n", opname(p->op));
-		return;
+
+		reg_val = dumptree(p->kids[0]);
+		d_start();
+		if(reg_val == no_reg) {
+			d_end();
+			return no_reg;
+		}
+
+		if(opsize(p->op) == 1) {
+			print("push %s\n", get8name(reg_val));
+			free_reg8(reg_val);
+		} else if(opsize(p->op) == 2) {
+			print("pushw %s\n", get16name(reg_val));
+			free_reg16(reg_val);
+		}
+		d_end();
+		return no_reg;
 	case BCOM: 
 		not_implemented()
 	case NEG: 
@@ -536,7 +567,54 @@ static unsigned char dumptree(Node p) {
 		return;
 		*/
 	case CALL:
-		not_implemented()
+		assert(p->kids[0]);
+		assert(!p->kids[1]);
+		assert(optype(p->op) != B);
+
+		for(i = 0; i<15; i++) {
+			assert(p->args);
+			if(!p->args[i]) break;
+			dumptree(p->args[i]);
+		}
+
+		if(generic(p->kids[0]->op) == ADDRG) {
+			//embed address to code
+			d_start();
+			print("call $%s\n", p->kids[0]->syms[0]->x.name);
+		} else {
+			reg_addr = dumptree(p->kids[0]);
+
+			d_start();
+			if(reg_addr != no_reg) {
+				print("pushw %s\n", get16name(reg_addr));
+				free_reg16(reg_addr);
+				print("call_st ; !!!! assume call-from-stack\n");
+			}
+		}
+
+		if((opsize(p->op)) == 1) {
+			target_reg = alloc_reg8();
+			if(target_reg != no_reg) {
+				print("pop %s\n", get8name(target_reg));
+			} else {
+				print("; cleanup problem! No free reg\n");
+				assert(0);
+			}
+		} else if((opsize(p->op)) == 2){
+			target_reg = alloc_reg16();
+			if(target_reg != no_reg) {
+				print("popw %s\n", get16name(target_reg));
+			} else {
+				print("; cleanup problem! No free reg\n");
+				assert(0);
+			}
+		} else {
+			not_implemented()
+		}
+
+		print("!!! cleanup after call !!!\n");
+		d_end();
+		return target_reg;
 /*
 		assert(p->kids[0]);
 		assert(!p->kids[1]);
@@ -548,8 +626,8 @@ static unsigned char dumptree(Node p) {
 	case ASGN: 
 		assert(p->kids[0]);
 		assert(p->kids[1]);
-		reg_addr = dumptree(p->kids[0]);
 		reg_val = dumptree(p->kids[1]);
+		reg_addr = dumptree(p->kids[0]);
 
 		d_start();
 		if((opsize(p->op)) == 1) {
@@ -801,7 +879,14 @@ static void I(asmcode)(char * s , Symbol ss[] ) {
 */
 static void I(emit)(Node p) {
 	for (; p; p = p->link) {
-		//if(p->count) continue;
+		if(p->count) {
+			if ((generic(p->op) == CALL) || (generic(p->op) == ARG)) {
+				continue;
+			} else {
+				print("deleted something important!\n");
+				assert(0);
+			}
+		}
 		dumptree(p);
 		if (generic(p->op) == CALL) {
 			//print("DISCARD%s%d\n", " "/*suffixes[optype(p->op)]*/, opsize(p->op));
@@ -853,13 +938,40 @@ static void gen01(Node p) {
 		gen02(p);
 	}
 }
+#define max_args 15
+void assign_args(Node p) {
+	int i=0;
+	Node q;
+	assert(p);
+	p->args = (Node *)malloc(sizeof(Node) * (max_args+1));
+	memset(p->args, 0, sizeof(Node)*(max_args+1));
+	for (q = p->back_link; q; q = q->back_link) {
+		if(generic(q->op) == CALL) {
+			return;
+		}
+		if(generic(q->op) == ARG) {
+			assert(i<max_args); 
+			q->count = 1;
+			p->args[i] = q;
+			i++;
+		}
+	}
+}
 
 static Node I(gen)(Node p) {
 	Node q;
-
+	Node prev = NULL;
 	assert(p);
-	for (q = p; q; q = q->link)
+	for (q = p; q; q = q->link) {
+		q->back_link = prev;
+		prev = q;
 		gen01(q);
+		if(generic(q->op) == CALL) {
+			assign_args(q);
+		} else {
+			q->args = NULL;
+		}
+  }
 	return p;
 }
 

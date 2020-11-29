@@ -45,15 +45,15 @@ static Type xxinit(int op, char *name, Metrics m) {
 	p->addressed = m.outofline;
 	switch (ty->op) {
 	case INT:
-// hack here
-		p->u.limits.max.i = ones(16*ty->size)>>1;
-//		p->u.limits.max.i = ones(8*ty->size)>>1;
+// hack here - reverted
+//		p->u.limits.max.i = ones(16*ty->size)>>1;
+		p->u.limits.max.i = ones(8*ty->size)>>1;
 		p->u.limits.min.i = -p->u.limits.max.i - 1;
 		break;
 	case UNSIGNED:
-// hack here
-		p->u.limits.max.u = ones(16*ty->size);
-//		p->u.limits.max.u = ones(8*ty->size);
+// hack here - reverted
+//		p->u.limits.max.u = ones(16*ty->size);
+		p->u.limits.max.u = ones(8*ty->size);
 		p->u.limits.min.u = 0;
 		break;
 	case FLOAT:
@@ -143,9 +143,9 @@ void type_init(int argc, char *argv[]) {
 	}
 	pointersym = install(string("T*"), &types, GLOBAL, PERM);
 	pointersym->addressed = IR->ptrmetric.outofline;
-        // hack here
-	// pointersym->u.limits.max.p = (void*)ones(8*IR->ptrmetric.size);
-	pointersym->u.limits.max.p = (void*)ones(16*IR->ptrmetric.size);
+        // hack here - reverted
+	pointersym->u.limits.max.p = (void*)ones(8*IR->ptrmetric.size);
+	// pointersym->u.limits.max.p = (void*)ones(16*IR->ptrmetric.size);
 	pointersym->u.limits.min.p = 0;
 	voidptype = ptr(voidtype);
 	funcptype = ptr(func(voidtype, NULL, 1));

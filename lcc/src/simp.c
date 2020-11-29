@@ -198,9 +198,9 @@ int intexpr(int tok, int n) {
 
 	needconst++;
 	if (p->op == CNST+I || p->op == CNST+U) {
-	    //hack here	
-            //n = cast(p, inttype)->u.v.i;
-            n = cast(p, longtype)->u.v.i;
+	    //hack here	- reverted
+            n = cast(p, inttype)->u.v.i;
+            //n = cast(p, longtype)->u.v.i;
         }
         else
 		error("integer expression must be constant\n");
@@ -245,14 +245,14 @@ Tree simplify(int op, Type ty, Tree l, Tree r) {
 			xcvtcnst(P,l->u.v.p,ty,p,l->u.v.p);
 			break;
 		case CVI+U:
-                        // hack here
-			// xcvtcnst(I,l->u.v.i,ty,u,((unsigned long)l->u.v.i)&ones(8*ty->size));
-			xcvtcnst(I,l->u.v.i,ty,u,((unsigned long)l->u.v.i)&ones(16*ty->size));
+                        // hack here - reverted
+			xcvtcnst(I,l->u.v.i,ty,u,((unsigned long)l->u.v.i)&ones(8*ty->size));
+			// xcvtcnst(I,l->u.v.i,ty,u,((unsigned long)l->u.v.i)&ones(16*ty->size));
 			break;
 		case CVU+U:
-                        // hack here
-			// xcvtcnst(U,l->u.v.u,ty,u,l->u.v.u&ones(8*ty->size));
-			xcvtcnst(U,l->u.v.u,ty,u,l->u.v.u&ones(16*ty->size));
+                        // hack here - reverted
+			xcvtcnst(U,l->u.v.u,ty,u,l->u.v.u&ones(8*ty->size));
+			// xcvtcnst(U,l->u.v.u,ty,u,l->u.v.u&ones(16*ty->size));
 			break;
 
 		case CVI+F:
@@ -278,18 +278,18 @@ Tree simplify(int op, Type ty, Tree l, Tree r) {
 		case BAND+U:
 			foldcnst(U,u,&);
 			commute(r,l);
-			// hack here
-                        // identity(r,l,U,u,ones(8*ty->size));
-                        identity(r,l,U,u,ones(16*ty->size));
+			// hack here - reverted
+                        identity(r,l,U,u,ones(8*ty->size));
+                        // identity(r,l,U,u,ones(16*ty->size));
 			if (r->op == CNST+U && r->u.v.u == 0)
 				return tree(RIGHT, ty, root(l), cnsttree(ty, 0UL));
 			break;
 		case BAND+I:
 			foldcnst(I,i,&);
 			commute(r,l);
-                        // hack here
-			// identity(r,l,I,i,ones(8*ty->size));
-			identity(r,l,I,i,ones(16*ty->size));
+                        // hack here - reverted
+			identity(r,l,I,i,ones(8*ty->size));
+			// identity(r,l,I,i,ones(16*ty->size));
 			if (r->op == CNST+I && r->u.v.u == 0)
 				return tree(RIGHT, ty, root(l), cnsttree(ty, 0L));
 			break;
@@ -377,15 +377,15 @@ Tree simplify(int op, Type ty, Tree l, Tree r) {
 			ufoldcnst(I,l->u.v.i ? cnsttree(ty, 1L) : cond(r));
 			break;
 		case BCOM+I:
-                        // hack here
-			// ufoldcnst(I,cnsttree(ty, (long)extend((~l->u.v.i)&ones(8*ty->size), ty)));
-			ufoldcnst(I,cnsttree(ty, (long)extend((~l->u.v.i)&ones(16*ty->size), ty)));
+                        // hack here - reverted
+			ufoldcnst(I,cnsttree(ty, (long)extend((~l->u.v.i)&ones(8*ty->size), ty)));
+			// ufoldcnst(I,cnsttree(ty, (long)extend((~l->u.v.i)&ones(16*ty->size), ty)));
 			idempotent(BCOM+U);
 			break;
 		case BCOM+U:
-                        // hack here
-			// ufoldcnst(U,cnsttree(ty, (unsigned long)((~l->u.v.u)&ones(8*ty->size))));
-			ufoldcnst(U,cnsttree(ty, (unsigned long)((~l->u.v.u)&ones(16*ty->size))));
+                        // hack here - reverted
+			ufoldcnst(U,cnsttree(ty, (unsigned long)((~l->u.v.u)&ones(8*ty->size))));
+			// ufoldcnst(U,cnsttree(ty, (unsigned long)((~l->u.v.u)&ones(16*ty->size))));
 			idempotent(BCOM+U);
 			break;
 		case BOR+U:

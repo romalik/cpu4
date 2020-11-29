@@ -179,6 +179,8 @@ struct node {
  	Symbol syms[3];
 	Node kids[2];
 	Node link;
+	Node back_link;
+	Node * args;
 	Xnode x;
 };
 enum {

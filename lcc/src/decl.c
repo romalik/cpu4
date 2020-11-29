@@ -1,9 +1,9 @@
 #include "c.h"
 
 static char rcsid[] = "$Id: decl.c,v 1.1 2002/08/28 23:12:42 drh Exp $";
-//hack here
-//#define add(x,n) (x > inttype->u.sym->u.limits.max.i-(n) ? (overflow=1,x) : x+(n))
-#define add(x,n) (x > longtype->u.sym->u.limits.max.i-(n) ? (overflow=1,x) : x+(n))
+//hack here - reverted
+#define add(x,n) (x > inttype->u.sym->u.limits.max.i-(n) ? (overflow=1,x) : x+(n))
+//#define add(x,n) (x > longtype->u.sym->u.limits.max.i-(n) ? (overflow=1,x) : x+(n))
 
 #define chkoverflow(x,n) ((void)add(x,n))
 #define bits2bytes(n) (((n) + 7)/8)

@@ -230,27 +230,39 @@ int gettok(void) {
 		src.y = lineno;
 		cp = rcp + 1;
 		switch (*rcp++) {
-		case '/': if (*rcp == '*') {
-			  	int c = 0;
-			  	for (rcp++; *rcp != '/' || c != '*'; )
-			  		if (map[*rcp]&NEWLINE) {
-			  			if (rcp < limit)
-			  				c = *rcp;
-			  			cp = rcp + 1;
-			  			nextline();
-			  			rcp = cp;
-			  			if (rcp == limit)
-			  				break;
-			  		} else
-			  			c = *rcp++;
-			  	if (rcp < limit)
-			  		rcp++;
-			  	else
-			  		error("unclosed comment\n");
-			  	cp = rcp;
-			  	continue;
-			  }
-			  return '/';
+		case '/': 
+			if (*rcp == '*') {
+				int c = 0;
+				for (rcp++; *rcp != '/' || c != '*'; )
+					if (map[*rcp]&NEWLINE) {
+						if (rcp < limit)
+							c = *rcp;
+						cp = rcp + 1;
+						nextline();
+						rcp = cp;
+						if (rcp == limit)
+							break;
+					} else
+						c = *rcp++;
+				if (rcp < limit)
+					rcp++;
+				else
+					error("unclosed comment\n");
+				cp = rcp;
+				continue;
+			}
+			if (*rcp == '/') {
+				for (rcp++; ((map[*rcp]&NEWLINE) == 0); ) {
+					*rcp++;
+				}
+				if (rcp < limit)
+					rcp++;
+				else
+					error("unclosed comment\n");
+				cp = rcp;
+				continue;
+			}
+			return '/';
 		case '<':
 			if (*rcp == '=') return cp++, LEQ;
 			if (*rcp == '<') return cp++, LSHIFT;
@@ -794,25 +806,23 @@ static Symbol icon(unsigned long n, int overflow, int base) {
 		tval.type = inttype;
 	switch (tval.type->op) {
 	case INT:
-/* HACK */
-/*
+/* hack - reverted*/
+
 		if (overflow || n > tval.type->u.sym->u.limits.max.i) {
 			warning("overflow in constant `%S'\n", token,
 				(char*)cp - token);
 			tval.u.c.v.i = tval.type->u.sym->u.limits.max.i;
 		} else
-*/
 			tval.u.c.v.i = n;
 		break;
 	case UNSIGNED:
-/* HACK */
-/*
+/* hack - reverted */
+
 		if (overflow || n > tval.type->u.sym->u.limits.max.u) {
 			warning("overflow in constant `%S'\n", token,
 				(char*)cp - token);
 			tval.u.c.v.u = tval.type->u.sym->u.limits.max.u;
 		} else
-*/
 			tval.u.c.v.u = n;
 		break;
 	default: assert(0);
@@ -986,9 +996,9 @@ static int backslash(int q) {
 		}
 		if (overflow)
 			warning("overflow in hexadecimal escape sequence\n");
-                //hack here
-		// return c&ones(8*widechar->size);
-		return c&ones(16*widechar->size);
+                //hack here - reverted
+	  return c&ones(8*widechar->size);
+		//return c&ones(16*widechar->size);
 		}
 	case '0': case '1': case '2': case '3':
 	case '4': case '5': case '6': case '7':
