@@ -179,7 +179,7 @@ void assemble() {
         expect_args = 2;
       } else if(!strcmp(&token[1], "ascii")) {
         int c;
-        while((c = get_quoted_text()) != 0) {
+        while((c = get_quoted_text()) >= 0) {
           emit(c);
         }
       } else if(!strcmp(&token[1], "skip")) {

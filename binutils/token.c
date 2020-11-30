@@ -24,25 +24,40 @@ void unget_token() {
   fl_unget = 1;
 }
 
-char get_quoted_text() {
+int get_quoted_text() {
   int c;
   static int inside_quoted = 0;
   while(1) {
     if((c = getc(infile)) == EOF) {
       panic("quote expected, eof hit\n");
     }
-    if(c == '\'') {
+    if(c == '"') {
       if(!inside_quoted) {
         inside_quoted = 1;
         continue;
       } else {
         inside_quoted = 0;
-        return 0;
+        return -1;
       }
     }
 
     if(inside_quoted) {
-      return c;
+      if(c == '\\') {
+        if((c = getc(infile)) == EOF) {
+          panic("escape expected, eof hit\n");
+        }
+        switch(c) {
+          case 'n': return '\n';
+          case 't': return '\t';
+          case 'a': return '\a';
+          case 'b': return '\b';
+          case 'r': return '\r';
+          case '0': return 0;
+          default: return c;
+        }
+      } else {
+        return c;
+      }
     }
   }
 }

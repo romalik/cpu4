@@ -253,14 +253,14 @@ static void I(stabline)(Coordinate *cp) {
 
 Interface xbytecodeIR = {
 	1, 1, 0,	/* char */
-	1, 1, 0,	/* short */
-	1, 1, 0,	/* int */
+	2, 1, 0,	/* short */
+	2, 1, 0,	/* int */
 	2, 1, 0,	/* long */
 	2, 1, 0,	/* long long */
 	2, 1, 1,	/* float */
 	2, 1, 1,	/* double */
 	2, 1, 1,	/* long double */
-	1, 1, 0,	/* T* */
+	2, 1, 0,	/* T* */
 	0, 1, 0,	/* struct */
 	0,		/* little_endian */
 	0,		/* mulops_calls */

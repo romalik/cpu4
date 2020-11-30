@@ -51,7 +51,7 @@ section control_word
 36  L       y++
 37  L       y--
 38  L       p++
-39  L       off++
+39  L       reserve_1 # was off++
 
 40  L       tl_read
 41  L       tl_write

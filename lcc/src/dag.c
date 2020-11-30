@@ -13,7 +13,9 @@ static struct dag {
 } *buckets[16];
 int nodecount;
 static Tree firstarg;
-int assignargs = 1;
+// hack - with this option DAG contains assign(arg_addr,cvt(indir(arg_addr))), effectively *arg_addr = *arg_addr
+//int assignargs = 1;
+int assignargs = 0;
 int prunetemps = -1;
 static Node *tail;
 
