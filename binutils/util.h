@@ -8,8 +8,9 @@ void panic_full(char * msg, char * c_file, int c_line, int current_line, char * 
 
 char find_keyword(char * kw[], char * str);
 
-#define low(x) (((uint8_t *)&x)[0])
-#define high(x) (((uint8_t *)&x)[1])
+
+#define low(x) ((uint8_t)(x&0xff))
+#define high(x) ((uint8_t)((x&0xff00) >> 8))
 
 void print_labels(uint8_t * label_vec);
 void hexdump(uint8_t * data, uint16_t length);

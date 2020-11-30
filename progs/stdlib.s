@@ -1,7 +1,7 @@
 
 ; print char in A
 putc:
-litw yl 0x4000
+litw y 0x4000
 puta m[y]
 ret
 
@@ -21,7 +21,7 @@ ret
 
 ; read string from uart to mem X till newline
 gets:
-litw yl 0x4000
+litw y 0x4000
 seta m[y]
 ; echo it back
 puta m[y]

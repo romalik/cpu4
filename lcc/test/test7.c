@@ -21,6 +21,11 @@ long extern_func_long();
 int main() {
   int a;
   char b;
+  int c;
+
+  a = 100;
+  b = 101;
+  c = 102;
 
   a = extern_func_int();
   a = extern_func_long();

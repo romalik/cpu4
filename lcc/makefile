@@ -33,6 +33,44 @@ lcc:	$Blcc$E
 bprint:	$Bbprint$E
 liblcc:	$Bliblcc$A
 
+#RCCOBJS=$Balloc$O \
+#	$Bbind$O \
+#	$Bdag$O \
+#	$Bdagcheck$O \
+#	$Bdecl$O \
+#	$Benode$O \
+#	$Berror$O \
+#	$Bexpr$O \
+#	$Bevent$O \
+#	$Binit$O \
+#	$Binits$O \
+#	$Binput$O \
+#	$Blex$O \
+#	$Blist$O \
+#	$Bmain$O \
+#	$Boutput$O \
+#	$Bprof$O \
+#	$Bprofio$O \
+#	$Bsimp$O \
+#	$Bstmt$O \
+#	$Bstring$O \
+#	$Bsym$O \
+#	$Btrace$O \
+#	$Btree$O \
+#	$Btypes$O \
+#	$Bnull$O \
+#	$Bsymbolic$O \
+#	$Bgen$O \
+#	$Bbytecode$O \
+#	$Bxbytecode$O \
+#	$Bcpu4$O \
+#	$Balpha$O \
+#	$Bmips$O \
+#	$Bsparc$O \
+#	$Bstab$O \
+#	$Bx86$O \
+#	$Bx86linux$O
+
 RCCOBJS=$Balloc$O \
 	$Bbind$O \
 	$Bdag$O \
@@ -59,17 +97,10 @@ RCCOBJS=$Balloc$O \
 	$Btree$O \
 	$Btypes$O \
 	$Bnull$O \
-	$Bsymbolic$O \
 	$Bgen$O \
-	$Bbytecode$O \
 	$Bxbytecode$O \
 	$Bcpu4$O \
-	$Balpha$O \
-	$Bmips$O \
-	$Bsparc$O \
-	$Bstab$O \
-	$Bx86$O \
-	$Bx86linux$O
+	$Bstab$O
 
 $Brcc$E::	$Bmain$O $Blibrcc$A $(EXTRAOBJS)
 		$(LD) $(LDFLAGS) -o $@ $Bmain$O $(EXTRAOBJS) $Blibrcc$A $(EXTRALIBS)

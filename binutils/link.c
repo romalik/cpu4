@@ -89,6 +89,7 @@ struct label_entry * find_located_label(uint16_t id, int file) {
   }
 
   printf("Symbol %s not found!\n", name);
+  exit(1);
 
   return 0;
 }
@@ -102,13 +103,12 @@ void linker_link() {
   for(curr_file = 0; curr_file < loaded_files; curr_file++) {
     for(i = 0; i<label_mask_sizes[curr_file]; i++) {
       addr = label_masks[curr_file][i];
-      high(id) = images[curr_file][addr];
-      low(id) = images[curr_file][addr+1];
+      id = (images[curr_file][addr]) | (images[curr_file][addr+1] << 8);
 
       e = find_located_label(id, curr_file);
       if(e) {
-        images[curr_file][addr] = high(e->position);
-        images[curr_file][addr+1] = low(e->position);
+        images[curr_file][addr] = low(e->position);
+        images[curr_file][addr+1] = high(e->position);
       } else {
         exit(1);
       }
@@ -179,17 +179,15 @@ int main(int argc, char ** argv) {
       );
   }
 
-  for(i = 0; i<loaded_files; i++) {
-    printf("file %d:\n", i);
-    print_labels(label_vecs[i]);
-  }
   linker_offset_labels();
+
+/*
   printf("off:\n");
   for(i = 0; i<loaded_files; i++) {
     printf("file %d:\n", i);
     print_labels(label_vecs[i]);
   }
-
+*/
   linker_link();
 
 
@@ -202,5 +200,7 @@ int main(int argc, char ** argv) {
   for(i = 0; i<loaded_files; i++) {
     free(raw_data[i]);
   }
+
+  return 0;
 
 }

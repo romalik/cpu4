@@ -75,7 +75,7 @@ char get_next_token() {
     if((c = getc(infile)) == EOF) {
       token[len] = 0;
       eof_hit = 1;
-        printf("eof\n");
+        //printf("eof\n");
       return len;
     }
 

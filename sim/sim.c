@@ -209,11 +209,11 @@ struct regs {
   uint8_t b;
   uint8_t f;
 
-  uint16_t s;
-  uint16_t x;
-  uint16_t y;
-  uint16_t z;
-  uint16_t p;
+  uint8_t s[2];
+  uint8_t x[2];
+  uint8_t y[2];
+  uint8_t z[2];
+  uint8_t p[2];
   uint8_t off;
   
   uint8_t ir;
@@ -222,6 +222,19 @@ struct regs {
 
 };
 
+
+void inc16(uint8_t r[2]) {
+  r[0]++;
+  if(!r[0]) {
+    r[1]++;
+  }
+}
+void dec16(uint8_t r[2]) {
+  r[0]--;
+  if(r[0] == 0xff) {
+    r[1]--;
+  }
+}
 
 
 
@@ -244,16 +257,15 @@ void mem_write(uint16_t addr, uint8_t val) {
 
 struct regs r;
 #define ARG (r.ir & 0xf)
-#define low(x) (((uint8_t *)&x)[0])
-#define high(x) (((uint8_t *)&x)[1])
-
+#define low(x) (x[0])
+#define high(x) (x[1])
+#define val16(x) (x[0] | (x[1]<<8))
 #define ZF ((r.f & 0x2) >> 1)
 #define CF (r.f & 0x1)
 
-uint16_t aluop() {
+void aluop(uint8_t *res, uint8_t *flags) {
 
 
-  uint16_t res;
   uint8_t Z;
   uint8_t C;
   uint16_t tmp;
@@ -303,8 +315,8 @@ uint16_t aluop() {
 
   Z = ((tmp & 0xff) == 0)?1:0;
   C = ((tmp & 0xff00) == 0)?0:1;
-  res = (Z << 9) | (C << 8) | (tmp & 0xff);
-  return res;
+  *res = (tmp & 0xff);
+  *flags = (Z << 1) | (C);
 }
 
 uint8_t sel_get_value(uint8_t sel) {
@@ -332,15 +344,15 @@ uint8_t sel_get_value(uint8_t sel) {
     case 10:
       return r.off;
     case 11:
-      return mem_read(r.z + r.off);
+      return mem_read(val16(r.s) + r.off);
     case 12:
-      return mem_read(r.z);
+      return mem_read(val16(r.z));
     case 13:
-      return mem_read(r.x);
+      return mem_read(val16(r.x));
     case 14:
-      return mem_read(r.y);
+      return mem_read(val16(r.y));
     case 15:
-      return mem_read(r.s);
+      return mem_read(val16(r.s));
     default:
       printf("Bad sel ir 0x%04x\n", r.ir);
       return r.b;
@@ -383,19 +395,19 @@ void sel_set_value(uint8_t sel, uint8_t val) {
       r.off = val;
       break;
     case 11:
-      mem_write(r.z + r.off, val);
+      mem_write(val16(r.s) + r.off, val);
       break;
     case 12:
-      mem_write(r.z, val);
+      mem_write(val16(r.z), val);
       break;
     case 13:
-      mem_write(r.x, val);
+      mem_write(val16(r.x), val);
       break;
     case 14:
-      mem_write(r.y, val);
+      mem_write(val16(r.y), val);
       break;
     case 15:
-      mem_write(r.s, val);
+      mem_write(val16(r.s), val);
       break;
     default:
       printf("Bad sel ir 0x%04x\n", r.ir);
@@ -413,50 +425,49 @@ void op_puta() {
   sel_set_value(ARG, r.a);  
 }
 void op_lit() {
-  sel_set_value(ARG, mem_read(r.p));
-  r.p++;
+  sel_set_value(ARG, mem_read(val16(r.p)));
+  inc16(r.p);
 }
 void op_litw() {
   //endiannes!!
-
-  sel_set_value(ARG | 0x01, mem_read(r.p)); 
-  r.p++;
-  sel_set_value(ARG, mem_read(r.p)); 
-  r.p++;
+  //read low first
+  sel_set_value(ARG, mem_read(val16(r.p))); 
+  inc16(r.p);
+  sel_set_value(ARG | 0x01, mem_read(val16(r.p))); 
+  inc16(r.p);
 }
 void op_push() {
-  mem_write(r.s, sel_get_value(ARG)); 
-  r.s--;
+  mem_write(val16(r.s), sel_get_value(ARG)); 
+  dec16(r.s);
 }
 void op_pop() {
-  r.s--;
-  sel_set_value(ARG, mem_read(r.s));  
+  inc16(r.s);
+  sel_set_value(ARG, mem_read(val16(r.s)));  
 }
 void op_pushw() {
   //endiannes!!
-
-  mem_write(r.s, sel_get_value(ARG)); 
-  r.s--;
-  mem_write(r.s, sel_get_value(ARG | 0x01)); 
-  r.s--;
+  //push high first
+  mem_write(val16(r.s), sel_get_value(ARG | 0x01)); 
+  dec16(r.s);
+  mem_write(val16(r.s), sel_get_value(ARG)); 
+  dec16(r.s);
 
 }
 void op_popw() {
   //endiannes!!
-  r.s--;
-  sel_set_value(ARG | 0x01, mem_read(r.s));  
-  r.s--;
-  sel_set_value(ARG, mem_read(r.s));  
+  inc16(r.s);
+  //pop low first
+  sel_set_value(ARG, mem_read(val16(r.s)));  
+  inc16(r.s);
+  sel_set_value(ARG | 0x01, mem_read(val16(r.s)));  
 
 }
 void op_alu() {
-  uint16_t tmp = aluop();
-  r.a = low(tmp);
-  r.f = high(tmp);  
+  aluop(&r.a, &r.f);
 }
 void op_cmp() {
-  uint16_t tmp = aluop();
-  r.f = high(tmp);    
+  uint8_t dummy;
+  aluop(&dummy, &r.f);
 }
 
 #define COND_MASK (((!CF) << 3) | (CF << 2) | ((!ZF) << 1) | (ZF))
@@ -465,10 +476,10 @@ void op_jmp() {
   uint8_t tmp_h;
   uint8_t tmp_l;
 
-  tmp_h = mem_read(r.p);
-  r.p++;
-  tmp_l = mem_read(r.p);
-  r.p++;
+  tmp_l = mem_read(val16(r.p));
+  inc16(r.p);
+  tmp_h = mem_read(val16(r.p));
+  inc16(r.p);
 
   if(COND_MASK & ARG) {
     low(r.p) = tmp_l;
@@ -476,33 +487,27 @@ void op_jmp() {
   }
 
 }
-void op_jmpx() {
 
-  if(COND_MASK & ARG) {
-    r.p = r.x;
-  }
-  
-}
 void op_ret() {
-  r.s++;
-  high(r.p) = mem_read(r.s);
-  r.s++;
-  low(r.p) = mem_read(r.s);
+  inc16(r.s);
+  low(r.p) = mem_read(val16(r.s));
+  inc16(r.s);
+  high(r.p) = mem_read(val16(r.s));
 }
 
 void op_call() {
   uint8_t tmp_h;
   uint8_t tmp_l;
 
-  tmp_h = mem_read(r.p);
-  r.p++;
-  tmp_l = mem_read(r.p);
-  r.p++;
+  tmp_l = mem_read(val16(r.p));
+  inc16(r.p);
+  tmp_h = mem_read(val16(r.p));
+  inc16(r.p);
 
-  mem_write(r.s, low(r.p));
-  r.s--;
-  mem_write(r.s, high(r.p));
-  r.s--;
+  mem_write(val16(r.s), high(r.p));
+  dec16(r.s);
+  mem_write(val16(r.s), low(r.p));
+  dec16(r.s);
   
   low(r.p) = tmp_l;
   high(r.p) = tmp_h;
@@ -521,26 +526,46 @@ void op_sim_halt() {
 }
 
 void op_sim_info() {
-  printf(">>>>> SIM INFO %d!\n", mem_read(r.p));
-  r.p++;  
+  printf(">>>>> SIM INFO %d!\n", mem_read(val16(r.p)));
+  inc16(r.p);  
   r.sect = 0;
   sleep(1);
 }
 
 void op_x_pp() {
-  r.x++;
+  inc16(r.x);
+  r.sect = 0;
+}
+
+void op_x_mm() {
+  dec16(r.x);
   r.sect = 0;
 }
 
 void op_y_pp() {
-  r.y++;
+  inc16(r.y);
+  r.sect = 0;
+}
+
+void op_y_mm() {
+  dec16(r.y);
+  r.sect = 0;
+}
+
+void op_s_pp() {
+  inc16(r.s);
+  r.sect = 0;
+}
+
+void op_s_mm() {
+  dec16(r.s);
   r.sect = 0;
 }
 
 void (*ops[])(void) = {
   /*sect 00*/
 op_nop,   op_seta,  op_puta,  op_lit, op_litw,  op_push,  op_pop,   op_pushw,
-op_popw,  op_alu,   op_cmp,   op_jmp, op_jmpx,  op_ret,   op_call,  op_ext,  
+op_popw,  op_alu,   op_cmp,   op_jmp, op_err ,  op_ret,   op_call,  op_ext,  
 
   /*sect 01*/
 op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
@@ -551,15 +576,35 @@ op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 
   /*sect 11*/
-op_sim_info,   op_x_pp,   op_y_pp,   op_err, op_err,   op_err,   op_err,   op_err,
-op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_sim_halt,
+op_x_pp,   op_x_mm,   op_y_pp,  op_y_mm,  op_s_pp,  op_s_mm,  op_err,      op_err,
+op_err,    op_err,    op_err,   op_err,   op_err,   op_err,   op_sim_info, op_sim_halt,
+
+};
+
+char * ops_text[] = {
+  /*sect 00*/
+"op_nop",   "op_seta",  "op_puta",  "op_lit", "op_litw",  "op_push",  "op_pop",   "op_pushw",
+"op_popw",  "op_alu",   "op_cmp",   "op_jmp", "op_err" ,  "op_ret",   "op_call",  "op_ext",  
+
+  /*sect 01*/
+"op_err",   "op_err",   "op_err",   "op_err", "op_err",   "op_err",   "op_err",   "op_err",
+"op_err",   "op_err",   "op_err",   "op_err", "op_err",   "op_err",   "op_err",   "op_err",
+
+  /*sect 10*/
+"op_err",   "op_err",   "op_err",   "op_err", "op_err",   "op_err",   "op_err",   "op_err",
+"op_err",   "op_err",   "op_err",   "op_err", "op_err",   "op_err",   "op_err",   "op_err",
+
+  /*sect 11*/ 
+"op_x_pp",   "op_x_mm",   "op_y_pp",  "op_y_mm",  "op_s_pp",  "op_s_mm",  "op_err",      "op_err",
+"op_err",    "op_err",    "op_err",   "op_err",   "op_err",   "op_err",   "op_sim_info", "op_sim_halt",
 
 };
 
 
+
 void fetch() {
-  r.ir = mem_read(r.p);
-  r.p++;
+  r.ir = mem_read(val16(r.p));
+  inc16(r.p);
 }
 
 void execute() {
@@ -576,58 +621,33 @@ void cycle() {
 }
 
 void print_state() {
+  printf("==========");
+  printf("==========");
+  printf("==========");
+  printf("==========");
+  printf("==========");
   printf("==========\n");
   printf("Cycle %zu\n", cycle_counter);
   printf("A:\t0x%02X\t|\t", r.a);
   printf("B:\t0x%02X\t|\t", r.b);
   printf("F:\t0x%02X\n", r.f);
-  printf("S:\t0x%04X\t|\t", r.s);
-  printf("X:\t0x%04X\t|\t", r.x);
-  printf("Y:\t0x%04X\n", r.y);
-  printf("P:\t0x%04X\t|\t", r.p);
-  printf("Z:\t0x%04X\t|\t", r.z);
+  printf("S:\t0x%04X\t|\t", val16(r.s));
+  printf("X:\t0x%04X\t|\t", val16(r.x));
+  printf("Y:\t0x%04X\n", val16(r.y));
+  printf("P:\t0x%04X\t|\t", val16(r.p));
+  printf("Z:\t0x%04X\t|\t", val16(r.z));
   printf("off:\t0x%02X\n", r.off);
   printf("IR:\t0x%02X\t|\t", r.ir);
-  printf("sect:\t0x%02X\n", r.sect);
+  printf("sect:\t0x%02X\t|\t", r.sect);
+  printf("op: %s\n", ops_text[((r.ir >> 4)&0xf)|(r.sect << 4)]);
+  printf("==========");
+  printf("==========");
+  printf("==========");
+  printf("==========");
+  printf("==========");
   printf("==========\n");
 
 }
-
-/*
-
-0 lit a 2
-2 lit b 3
-4 alu sum
-5 litw s ff dd
-8 call 00 19
-11 seta xh
-12 puta b
-13 seta xl
-14 alu sum
-15 info 2
-17 halt
-fn: 19 info 1
-21 ret
-*/
-
-/*
-uint8_t prog[] = {
-  0x30, 0x02,
-  0x31, 0x03,
-  0x90,
-  0x46, 0xff, 0xee,
-  0xe0, 0x00, 19,
-  0x13,
-  0x21,
-  0x12,
-  0x90,
-  0xf3, 0x02,
-  0xf3, 0xf0,
-  0xf3, 0x01,
-  0xd0
-
-};
-*/
 
 void init_signals() {
     signal(SIGINT,sigcatch);
@@ -673,17 +693,18 @@ int main(int argc, char ** argv) {
 
 
   r.sect = 0;
-  r.p = 0;
+  low(r.p) = 0;
+  high(r.p) = 0;
 
   start_time = gettime_ms();
 
   while(!halt) {
-    cycle();
     if(step) {
       print_state();
-      sleep(1);
-      start_time += 1000;
+      usleep(250*1000);
+      start_time += 250*1000;
     }
+    cycle();
   }
 
   terminate();

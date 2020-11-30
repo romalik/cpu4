@@ -3,8 +3,9 @@
 
 static char rcsid[] = "$Id: bytecode.c,v 1.1 2002/08/28 23:12:41 drh Exp $";
 
-int total_sp_offset = 0;
+int current_sp_offset = 0;
 int current_func_retsize = 0;
+int last_emitted =0;
 
 #define debug_all 0
 
@@ -152,77 +153,73 @@ static void I(defsymbol)(Symbol p)
 void push(char *arg)
 {
 	print("push %s\n", arg);
-	total_sp_offset++;
-	print("; sp +%d\n", total_sp_offset);
+	current_sp_offset++;
+	print("; sp +%d\n", current_sp_offset);
 }
 void pushw(char *arg)
 {
 	print("pushw %s\n", arg);
-	total_sp_offset += 2;
-	print("; sp +%d\n", total_sp_offset);
+	current_sp_offset += 2;
+	print("; sp +%d\n", current_sp_offset);
 }
 void pop(char *arg)
 {
 	print("pop %s\n", arg);
-	total_sp_offset--;
-	print("; sp +%d\n", total_sp_offset);
+	current_sp_offset--;
+	print("; sp +%d\n", current_sp_offset);
 }
 void popw(char *arg)
 {
 	print("popw %s\n", arg);
-	total_sp_offset -= 2;
-	print("; sp +%d\n", total_sp_offset);
+	current_sp_offset -= 2;
+	print("; sp +%d\n", current_sp_offset);
 }
 
 void offset_sp(int off)
 {
-	print("; offset sp by %d\n", off);
-	print("seta sl\n");
-	print("lit b %d\n", off);
-	print("alu add\n");
-	print("puta sl\n");
-	print("seta sh\n");
-	print("lit b 0\n");
-	print("alu adc\n");
-	print("puta sh\n");
-	print("; offset end\n");
-	total_sp_offset -= off;
-	print("; sp +%d\n", total_sp_offset);
+	if(off >= 0) {
+		print("; offset sp by %d\n", off);
+		print("seta sl\n");
+		print("lit b %d\n", off);
+		print("alu add\n");
+		print("puta sl\n");
+		print("seta sh\n");
+		print("lit b 0\n");
+		print("alu adc\n");
+		print("puta sh\n");
+		print("; offset end\n");
+	} else {
+		print("; offset sp by %d\n", off);
+		print("seta sl\n");
+		print("lit b %d\n", -off);
+		print("alu sub\n");
+		print("puta sl\n");
+		print("seta sh\n");
+		print("lit b 0\n");
+		print("alu sbc\n");
+		print("puta sh\n");
+		print("; offset end\n");
+
+	}
 }
 
 /*
-access locals: off(X) = current_off + n_spill + n_locals - X ; m[SP-off]
+access locals : off(X) = current_off + n_spill + 1 + X ; m[SP-off]
 access args  : off(X) = current_off + n_spill + n_locals + 2(retaddr) + size(retval??) + 1 + X ; m[SP-off]
 access retval : off(X) = current_off + n_spill + n_locals + 2(retaddr) + 1
-total_sp_offset = current_off + n_spill + n_locals
+access retaddr: off(X) = current_off + n_spill + n_locals + 1
 n_locals = global maxoffset
 */
 
 #define n_spill 4
 
-#define get_local_sp_offset(X) (total_sp_offset - (X))
-#define get_arg_sp_offset(X) (total_sp_offset + 2 + current_func_retsize + 1 + (X))
-#define get_retval_sp_offset() (total_sp_offset + 2 + 1)
-
+#define get_local_sp_offset(X) (current_sp_offset + n_spill + 1 + (X))
+#define get_arg_sp_offset(X) (current_sp_offset + n_spill + maxoffset + 2 + current_func_retsize + 1 + (X))
+#define get_retval_sp_offset() (current_sp_offset + n_spill + maxoffset + 2 + 1)
+#define get_retaddr_sp_offset() (current_sp_offset + n_spill + maxoffset + 1)
 #define no_reg 0xff
 
-#define lots_of_regs 0
 
-#if lots_of_regs
-#define nreg16 4
-#define nreg8 8
-static unsigned char reg16[] = {0, 0, 0, 0, 0, 0, 0};
-static unsigned char reg8[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static char *reg16names[] = {
-		"x", "y", "r1", "r2" //,"r3","r4","r5"
-};
-static char *reg16memnames[] = {
-		"m[x]", "m[y]", "m[r1]", "m[r2]" //,"m[r3]","m[r4]","m[r5]"
-};
-static char *reg8names[] = {
-		"xl", "xh", "yl", "yh", "r1l", "r1h", "r2l", "r2h" //,"r3l","r3h","r4l","r4h","r5l","r5h"
-};
-#else
 #define nreg16 2
 #define nreg8 4
 static unsigned char reg16[nreg16] = {0, 0};
@@ -239,7 +236,6 @@ static char *reg8names[] = {
 		"sol", "soh" //inaccessible
 };
 #define reg_so 2
-#endif
 
 static char *no_reg_name = "no_reg";
 
@@ -452,6 +448,8 @@ static unsigned char dumptree(Node p)
 	char *cmd;
 	int i;
 
+	last_emitted = generic(p->op);
+
 	if (dump_tree)
 	{
 
@@ -573,6 +571,7 @@ static unsigned char dumptree(Node p)
 		d_start();
 		reg_addr = alloc_reg16();
 
+
 		print("; >> manual arg address calculation!\n");
 		print("seta sl\n");
 		print("lit b %d\n", get_arg_sp_offset(atoi(p->syms[0]->x.name)));
@@ -580,6 +579,8 @@ static unsigned char dumptree(Node p)
 		print("alu add\n");
 		if (reg_addr == no_reg)
 		{
+			//endianness
+			//pushing low
 			push("a");
 		}
 		else
@@ -592,6 +593,8 @@ static unsigned char dumptree(Node p)
 		print("alu adc\n");
 		if (reg_addr == no_reg)
 		{
+			//endianness
+			//pushing high
 			push("a");
 		}
 		else
@@ -618,6 +621,8 @@ static unsigned char dumptree(Node p)
 		print("alu add\n");
 		if (reg_addr == no_reg)
 		{
+			//endianness
+			//pushing low
 			push("a");
 		}
 		else
@@ -630,6 +635,8 @@ static unsigned char dumptree(Node p)
 		print("alu adc\n");
 		if (reg_addr == no_reg)
 		{
+			//endianness
+			//pushing high
 			push("a");
 		}
 		else
@@ -848,6 +855,9 @@ static unsigned char dumptree(Node p)
 		else if (opsize(p->op) == 2)
 		{
 
+			//endianness
+			//m[X] = xl
+			//m[X+1] = xh
 			if (use_so == USE_SO_ARG)
 			{
 				print("lit off %d\n", get_arg_sp_offset(atoi(cmd)));
@@ -871,16 +881,18 @@ static unsigned char dumptree(Node p)
 				print("%s++\n", get16name(reg_addr));
 				print("seta %s\n", get16memreg(reg_addr));
 			}
-			//a - second
-			//b - first
+			//a - m[x+1]
+			//b - m[x]
 
 			free_reg16(reg_addr);
 
 			target_reg = alloc_reg16();
 			if (target_reg == no_reg)
 			{
-				push("b");
-				push("a");
+				//endianness
+
+				push("b"); //m[x+1]
+				push("a"); //m[x]
 			}
 			else
 			{
@@ -946,6 +958,7 @@ static unsigned char dumptree(Node p)
 			print("; store %s to frame as retval\n", get16name(reg_val));
 			if (reg_val == no_reg)
 			{
+				//endianness
 				popw("a");
 				print("lit off %d\n", get_retval_sp_offset());
 				print("puta m[so]\n");
@@ -955,6 +968,7 @@ static unsigned char dumptree(Node p)
 			}
 			else
 			{
+				//endianness
 				print("lit off %d\n", get_retval_sp_offset());
 				print("seta %s\n", get16name_low(reg_val));
 				print("puta m[so]\n");
@@ -968,7 +982,7 @@ static unsigned char dumptree(Node p)
 		{
 			not_implemented()
 		}
-		offset_sp(get_local_sp_offset(0));
+		offset_sp(get_retaddr_sp_offset()-1);
 		print("ret\n");
 		d_end();
 		return no_reg;
@@ -999,6 +1013,14 @@ static unsigned char dumptree(Node p)
 		{
 			//embed address to code
 			d_start();
+
+			print("; reserve retval\n");
+			for(i = 0; i<(opsize(p->op)); i++) {
+				print("s--\n");
+				current_sp_offset++;
+			}
+
+
 			print("call $%s\n", p->kids[0]->syms[0]->x.name);
 		}
 		else
@@ -1010,11 +1032,20 @@ static unsigned char dumptree(Node p)
 			{
 				pushw(get16name(reg_addr));
 				free_reg16(reg_addr);
+
+				print("; reserve retval\n");
+				for(i = 0; i<(opsize(p->op)); i++) {
+					print("s--\n");
+					current_sp_offset++;
+				}
+
 				print("calls ; !!!! assume call-from-stack\n");
 			}
 		}
 
-		if ((opsize(p->op)) == 1)
+		if ((opsize(p->op)) == 0) {
+			//nothing to do
+		} else if ((opsize(p->op)) == 1)
 		{
 			target_reg = alloc_reg8();
 			if (target_reg != no_reg)
@@ -1047,6 +1078,7 @@ static unsigned char dumptree(Node p)
 		}
 
 		offset_sp(total_arg_size);
+		current_sp_offset -= total_arg_size;
 
 		d_end();
 		return target_reg;
@@ -1140,22 +1172,28 @@ static unsigned char dumptree(Node p)
 				popw("a");
 				if (use_so == USE_SO_LOCAL)
 				{
-					print("lit off %d\n", get_local_sp_offset(atoi(cmd)));
+					//endianness
+
+					print("lit off %d\n", get_local_sp_offset(atoi(cmd))); //m[arrd] = xl
 					print("puta m[so]\n");
 					print("seta b\n");
-					print("lit off %d\n", get_local_sp_offset(atoi(cmd)) + 1);
+					print("lit off %d\n", get_local_sp_offset(atoi(cmd)) + 1); //m[addr+1] = xh
 					print("puta m[so]\n");
 				}
 				else if (use_so == USE_SO_ARG)
 				{
-					print("lit off %d\n", get_arg_sp_offset(atoi(cmd)));
+					//endianness
+					print("lit off %d\n", get_arg_sp_offset(atoi(cmd)));//m[arrd] = xl
 					print("puta m[so]\n");
 					print("seta b\n");
-					print("lit off %d\n", get_arg_sp_offset(atoi(cmd)) + 1);
+					print("lit off %d\n", get_arg_sp_offset(atoi(cmd)) + 1);//m[addr+1] = xh
 					print("puta m[so]\n");
 				}
 				else
 				{
+					//endianness
+					//m[addr] = xl
+					//m[addr+1] = xh
 					print("puta %s ;check endianness\n", get16memreg(reg_addr));
 					print("seta b\n");
 					print("%s++\n", get16name(reg_addr));
@@ -1215,8 +1253,16 @@ static unsigned char dumptree(Node p)
 		}
 		d_end();
 		return no_reg;
-	case RSH:
-		not_implemented() case LSH : not_implemented() case BCOM : not_implemented() case NEG : not_implemented() case BOR : case BAND : case BXOR : case ADD : case SUB : assert(p->kids[0]);
+	case RSH:not_implemented() 
+	case LSH : not_implemented() 
+	case BCOM : not_implemented() 
+	case NEG : not_implemented() 
+	case BOR : 
+	case BAND : 
+	case BXOR : 
+	case ADD : 
+	case SUB : 
+		assert(p->kids[0]);
 		assert(p->kids[1]);
 		reg_arg_1 = dumptree(p->kids[0]);
 		reg_arg_2 = dumptree(p->kids[1]);
@@ -1343,6 +1389,8 @@ static unsigned char dumptree(Node p)
 
 			if (target_reg == no_reg)
 			{
+				//endianness
+				//push low
 				push("a");
 			}
 			else
@@ -1384,7 +1432,14 @@ static unsigned char dumptree(Node p)
 
 			if (target_reg == no_reg)
 			{
+				//endianness
+				//reverse low and high
+				pop("b");
+
+				//push high
 				push("a");
+				//push low
+				push("b");
 			}
 			else
 			{
@@ -1592,7 +1647,7 @@ static void I(emit)(Node p)
 
 static void I(export)(Symbol p)
 {
-	print("export %s\n", p->x.name);
+	print(";.export %s\n", p->x.name);
 }
 
 static void I(function)(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
@@ -1612,14 +1667,17 @@ static void I(function)(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	gencode(caller, callee);
 	//wierd f->type->type->size to get return size
 	current_func_retsize = f->type->type->size;
-	total_sp_offset = 0;
+	current_sp_offset = 0;
 	print("; function %s [%d] %d %d\n", f->x.name, f->type->type->size, maxoffset, maxargoffset);
 	print("%s:\n", f->x.name);
 	print("; alloc %d for locals, %d for spill\n", maxoffset, n_spill);
 	offset_sp(-(maxoffset + n_spill));
 	emitcode();
 	print("; end function %s\n", f->x.name);
-	print("ret\n");
+	if(last_emitted != RET) {
+		offset_sp(get_retaddr_sp_offset()-1);
+		print("ret\n");
+	}
 }
 
 static void gen02(Node p)
@@ -1702,7 +1760,7 @@ static void I(global)(Symbol p)
 
 static void I(import)(Symbol p)
 {
-	print("import %s\n", p->x.name);
+	print(";.import %s\n", p->x.name);
 }
 
 static void I(local)(Symbol p)

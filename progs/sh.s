@@ -1,5 +1,5 @@
 start:
-litw sl 0xffdd
+litw s 0xffdd
 call $main
 halt
 hlt_loop:
@@ -7,7 +7,7 @@ jmp $hlt_loop
 
 
 fn_hello:
-litw xl $msg
+litw x $msg
 call $puts
 ret
 
@@ -15,16 +15,16 @@ main:
 
 echo_loop:
 
-litw xl $msgprompt
+litw x $msgprompt
 call $puts
 
-litw xl $in_str
+litw x $in_str
 call $gets
 
-litw xl $msg2
+litw x $msg2
 call $puts
 
-litw xl $in_str
+litw x $in_str
 call $puts
 
 ; put " and nl
@@ -33,8 +33,8 @@ call $putc
 lit a 0x0a
 call $putc
 
-litw xl $cmd_hello
-litw yl $in_str
+litw x $cmd_hello
+litw y $in_str
 call $strcmp
 lit b 0
 cmp sub
@@ -47,25 +47,20 @@ jmp $echo_loop
 ret
 
 cmd_hello:
-.ascii 'hello'
-.byte 0x00
+.ascii "hello\0"
 
 msg:
-.ascii 'Hello world!'
-.byte 0x0a
-.byte 0x00
+.ascii "Hello world!\n\0"
 
 msg2:
-.ascii 'Recv string: "'
-.byte 0x00
+.ascii "Recv string: \"\0"
 
 msgnl:
 .byte 0x0a
 .byte 0x00
 
 msgprompt:
-.ascii '> '
-.byte 0x00
+.ascii "> \0"
 
 in_str:
 .skip 128

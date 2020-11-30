@@ -21,19 +21,21 @@ sp->bp(Z)
 
 prolog:
 alloc locals ( + spill ?)
+locals last to first!
+
 |........|
 |..arg3..|
 |..arg2..|
 |..arg1..|
 |..arg0..|
-|+retval+|
-|+retval+|
-|+retadrl|
+|+retvalh|
+|+retvall|
 |+retadrh|
-|.local0.| <- BP
+|+retadrl|
+|.local2h| <- BP
+|.local2l|
 |.local1.|
-|.local2.|
-|.local3.|
+|.local0.|
 |.spill0.|
 |.spill1.|
 |.spill2.|
@@ -42,18 +44,18 @@ alloc locals ( + spill ?)
 
 mid-function:
 |........|
-|..arg3..|
-|..arg2..|
+|..arg2h.|
+|..arg2l.|
 |..arg1..|
 |..arg0..|
-|+retval+|
-|+retval+|
-|+retadrl|
+|+retvalh|
+|+retvall|
 |+retadrh|
-|.local0.| <- BP
+|+retadrl|
+|.local2h| <- BP
+|.local2l|
 |.local1.|
-|.local2.|
-|.local3.|
+|.local0.|
 |.spill0.|
 |.spill1.|
 |.spill2.|
@@ -63,7 +65,8 @@ mid-function:
 |........|/
 |        | <- SP
 
-access locals : off(X) = current_off + n_spill + n_locals - X ; m[SP-off]
+access locals : off(X) = current_off + n_spill + 1 + X ; m[SP-off]
 access args   : off(X) = current_off + n_spill + n_locals + 2(retaddr) + size(retval??) + 1 + X ; m[SP-off]
 access retval : off(X) = current_off + n_spill + n_locals + 2(retaddr) + 1
+access retaddr: off(X) = current_off + n_spill + n_locals + 1
 n_locals = global maxoffset

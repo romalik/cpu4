@@ -1,0 +1,28 @@
+1. litw 
+    - Xl = m[p], p++; Xh = m[p], p++
+
+2. pushw X
+    - m[--s] = Xh; m[--s] = Xl
+
+3, popw X
+    - Xl = m[--s]; Xh = m[--s]
+
+
+3. How to set 16 mem?
+    - m[addr] = xl ; m[addr+1] = xh  <---- 
+    - m[addr] = xh ; m[addr+1] = xl
+
+
+
+0xff
+0xfe
+0xfd
+0xfc
+0xfb
+0xfa
+...
+
+0x10
+0x09 v0_high
+0x08 v0_low
+0x07

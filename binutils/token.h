@@ -11,6 +11,6 @@ void parser_set_file(FILE * f);
 char get_next_token();
 void skip_comment();
 void unget_token();
-char get_quoted_text();
+int get_quoted_text();
 
 #endif
