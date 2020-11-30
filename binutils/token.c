@@ -16,6 +16,13 @@ static FILE * infile;
 
 static uint8_t fl_unget = 0;
 
+
+static int b_getc_last = 0;
+int b_getc(FILE * fp) {
+  b_getc_last = getc(fp);
+  return b_getc_last;
+}
+
 void parser_set_file(FILE * f) {
   infile = f;
 }
@@ -28,7 +35,7 @@ int get_quoted_text() {
   int c;
   static int inside_quoted = 0;
   while(1) {
-    if((c = getc(infile)) == EOF) {
+    if((c = b_getc(infile)) == EOF) {
       panic("quote expected, eof hit\n");
     }
     if(c == '"') {
@@ -43,7 +50,7 @@ int get_quoted_text() {
 
     if(inside_quoted) {
       if(c == '\\') {
-        if((c = getc(infile)) == EOF) {
+        if((c = b_getc(infile)) == EOF) {
           panic("escape expected, eof hit\n");
         }
         switch(c) {
@@ -72,7 +79,7 @@ char get_next_token() {
   len = 0;
   while(1) {
 
-    if((c = getc(infile)) == EOF) {
+    if((c = b_getc(infile)) == EOF) {
       token[len] = 0;
       eof_hit = 1;
         //printf("eof\n");
@@ -98,7 +105,11 @@ char get_next_token() {
 void skip_comment() {
   int c;
   while(1) {
-    if((c = getc(infile)) == EOF) {
+    if(b_getc_last == '\n') {
+      //one word comment
+      return;
+    }
+    if((c = b_getc(infile)) == EOF) {
       eof_hit = 1;
       return;
     }

@@ -12,7 +12,6 @@ void puts(char *s) {
 
 int main() {
   char * str = "test string\n";
-
   puts(str);
 
   return 0;

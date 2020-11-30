@@ -21,7 +21,7 @@ call $puts
 litw x $in_str
 call $gets
 
-litw x $msg2
+litw x $__msg2
 call $puts
 
 litw x $in_str
@@ -49,10 +49,11 @@ ret
 cmd_hello:
 .ascii "hello\0"
 
+;.lit
 msg:
 .ascii "Hello world!\n\0"
 
-msg2:
+__msg2:
 .ascii "Recv string: \"\0"
 
 msgnl:
@@ -64,5 +65,3 @@ msgprompt:
 
 in_str:
 .skip 128
-
-

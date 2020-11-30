@@ -5,7 +5,7 @@
 
 
 struct label_entry {
-  char name[15];
+  char name[64];
   uint16_t id;
   uint16_t position;
   uint8_t present;

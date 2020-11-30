@@ -208,6 +208,9 @@ void assemble() {
       } else if(!strcmp(&token[1], "skip")) {
         get_next_token();
         current_pos += strtol(token,0,0);
+      } else {
+        printf("Directive: %s\n", token);
+        panic("Bad directive");
       }
 
     } else if(token[0] == '$') {
@@ -289,6 +292,7 @@ int main(int argc, char ** argv) {
   set_label_usage_list(label_usage_list);
 
   assemble();
+
   //print_labels(label_vec);
   //print_label_usage(get_label_usage_list_size());
   //hexdump(image, current_pos);

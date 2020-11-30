@@ -122,7 +122,7 @@ static void I(defstring)(int len, char *str)
 		}
 	}
 
-	print("\"\n");
+	print("\"\n\n");
 }
 
 static void I(defsymbol)(Symbol p)
@@ -553,12 +553,12 @@ static unsigned char dumptree(Node p)
 
 		if (reg_addr == no_reg)
 		{
-			print("litw a\n");
+			print("litw a $%s\n", p->syms[0]->x.name);
 			pushw("a");
 		}
 		else
 		{
-			print("litw %s\n", get16name(reg_addr));
+			print("litw %s $%s\n", get16name(reg_addr), p->syms[0]->x.name);
 		}
 		d_end();
 		return reg_addr;
@@ -1267,6 +1267,8 @@ static unsigned char dumptree(Node p)
 		reg_arg_1 = dumptree(p->kids[0]);
 		reg_arg_2 = dumptree(p->kids[1]);
 
+		d_start();
+		print("; generic p->op = %d\n", (generic(p->op)));
 		switch (generic(p->op))
 		{
 		case BOR:
@@ -1289,7 +1291,8 @@ static unsigned char dumptree(Node p)
 			break;
 		}
 
-		d_start();
+		print("; cmd: %s\n", cmd);
+
 		if (opsize(p->op) == 1)
 		{
 			if (reg_arg_2 == no_reg)
@@ -1385,7 +1388,7 @@ static unsigned char dumptree(Node p)
 				print("puta b\n");
 			}
 
-			print("alu %s\n");
+			print("alu %s\n", cmd);
 
 			if (target_reg == no_reg)
 			{
@@ -1571,10 +1574,10 @@ static unsigned char dumptree(Node p)
 
 			i = genlabel(1);
 
-			print("jmp z __jump_label__%d\n", i);
+			print("jmp z $__jump_label__%d\n", i);
 			if ((generic(p->op)) != EQ)
 				print("jmp %s $%s\n", cmd, p->syms[0]->x.name);
-			print("jmp __jump_label_2__%d\n", i);
+			print("jmp $__jump_label_2__%d\n", i);
 			print("__jump_label__%d:\n", i);
 
 			// compare low bytes if high equal
@@ -1754,8 +1757,8 @@ static Node I(gen)(Node p)
 
 static void I(global)(Symbol p)
 {
-	print("align %d\n", p->type->align > 4 ? 4 : p->type->align);
-	print("LABELV %s\n", p->x.name);
+	//print("align %d\n", p->type->align > 4 ? 4 : p->type->align);
+	print("%s:\n", p->x.name);
 }
 
 static void I(import)(Symbol p)
