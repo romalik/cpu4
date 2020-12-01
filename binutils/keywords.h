@@ -31,7 +31,7 @@ char * alu_args[16] = {
   "sub", 
   "neg", 
   "shl", 
-  "NOP", 
+  "shlc", 
   "inc", 
   "adc", 
   "sbc", 
@@ -111,7 +111,7 @@ char * opcodes_3[16] = {
   "y--",   /* 3 1 */
   "s++",   /* 4 2 */
   "s--",   /* 5 0 */
-  "nop",   /* 6 0 */
+  "calls",   /* 6 0 */
   "nop",   /* 7 0 */
   "nop",   /* 8 0 */
   "nop",   /* 9 - */

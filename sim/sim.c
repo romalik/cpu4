@@ -285,9 +285,10 @@ void aluop(uint8_t *res, uint8_t *flags) {
       tmp = -r.a;
       break;      
     case 3:
-      tmp = r.a << 1;
+      tmp = (((uint16_t)r.a) << 1);
       break;      
     case 4:
+      tmp = (((uint16_t)r.a) << 1) + (r.f & 0x01);
       break;      
     case 5:
       tmp = r.a++;      
@@ -551,6 +552,24 @@ void op_call() {
   high(r.p) = tmp_h;
 }
 
+void op_calls() {
+  uint8_t tmp_h;
+  uint8_t tmp_l;
+
+  inc16(r.s);
+  tmp_l = mem_read(val16(r.s));
+  inc16(r.s);
+  tmp_h = mem_read(val16(r.s));
+
+  mem_write(val16(r.s), high(r.p));
+  dec16(r.s);
+  mem_write(val16(r.s), low(r.p));
+  dec16(r.s);
+  
+  low(r.p) = tmp_l;
+  high(r.p) = tmp_h;
+}
+
 void op_ext() {
   r.sect = ARG;
 }
@@ -621,7 +640,7 @@ op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 
   /*sect 11*/
-op_x_pp,   op_x_mm,   op_y_pp,  op_y_mm,  op_s_pp,  op_s_mm,  op_err,      op_err,
+op_x_pp,   op_x_mm,   op_y_pp,  op_y_mm,  op_s_pp,  op_s_mm,  op_calls,    op_err,
 op_err,    op_err,    op_err,   op_err,   op_err,   op_err,   op_sim_info, op_sim_halt,
 
 };

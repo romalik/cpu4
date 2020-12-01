@@ -40,7 +40,7 @@ static void I(address)(Symbol q, Symbol p, long n)
 
 static void I(defaddress)(Symbol p)
 {
-	print("address %s\n", p->x.name);
+	print(".word $%s\n", p->x.name);
 }
 
 static void I(defconst)(int suffix, int size, Value v)
@@ -413,8 +413,9 @@ void free_reg16(unsigned char reg)
 
 
 #define not_implemented()                           \
-	print("; not implemented (%s)\n", opname(p->op)); \
-	return no_reg;
+	fprint(stderr, "; not implemented (%s)\n", opname(p->op)); \
+	assert(0);
+
 #define d_start() print("; %s %s {\n", opname(p->op), (p->syms) ? ((p->syms[0]) ? (p->syms[0]->x.name ? p->syms[0]->x.name : "") : ("")) : "");
 #define d_end() print("; } %s(%s) -> %s\n;\n", \
   opname(p->op), (p->syms) ? ((p->syms[0]) ? (p->syms[0]->x.name ? p->syms[0]->x.name : "") : ("")) : "",\
@@ -447,7 +448,7 @@ static unsigned char dumptree(Node p)
 	unsigned char total_arg_size = 0;
 	char need_swap = 0;
 	char *cmd;
-	int i;
+	int i, n;
 
 	char is_signed = optype(p->op);
 	switch (optype(p->op)) {
@@ -1047,19 +1048,29 @@ static unsigned char dumptree(Node p)
 			reg_addr = dumptree(p->kids[0]);
 
 			d_start();
+			if(reg_addr == no_reg && (opsize(p->op))) {
+				//free space for retval
+				popw("a");
+			}
+
+			print("; reserve retval\n");
+			for(i = 0; i<(opsize(p->op)); i++) {
+				print("s--\n");
+				current_sp_offset++;
+			}
+
+			if(reg_addr == no_reg && (opsize(p->op))) {
+				pushw("a");
+			}
+
 			if (reg_addr != no_reg)
-			{
+			{	
 				pushw(get16name(reg_addr));
 				free_reg16(reg_addr);
-
-				print("; reserve retval\n");
-				for(i = 0; i<(opsize(p->op)); i++) {
-					print("s--\n");
-					current_sp_offset++;
-				}
-
-				print("calls ; !!!! assume call-from-stack\n");
 			}
+
+			print("calls ; !!!! assume call-from-stack\n");
+			current_sp_offset -= 2; //calls will consume 2 bytes
 		}
 
 		if ((opsize(p->op)) == 0) {
@@ -1272,10 +1283,200 @@ static unsigned char dumptree(Node p)
 		}
 		d_end();
 		return no_reg;
+
+
 	case RSH:not_implemented() 
-	case LSH : not_implemented() 
-	case BCOM : not_implemented() 
-	case NEG : not_implemented() 
+	case LSH :
+		assert(p->kids[0]);
+		assert(p->kids[1]);
+		reg_arg_1 = dumptree(p->kids[0]);
+
+		if (generic(p->kids[1]->op) == CNST)
+		{
+			//embed address to code
+			d_start();
+			n = atoi(p->kids[1]->syms[0]->x.name);
+
+			if((opsize(p->op)) == 1) {
+
+				if(reg_arg_1 == no_reg) {
+					pop("a");
+				} else {
+					print("puta %s\n", get8name(reg_arg_1));
+					free_reg8(reg_arg_1);
+				}
+
+				for(i = 0; i<n; i++) {
+					print("alu shl\n");
+				}
+				target_reg = alloc_reg8();
+
+				if(target_reg == no_reg) {
+					push("a\n");
+				} else {
+					print("puta %s\n", get8name(target_reg));
+				}
+
+
+			} else if((opsize(p->op)) == 2) {
+
+				if(reg_arg_1 == no_reg) {
+					fprintf(stderr,"Can not alloc reg16 for shl arg\n");
+					assert(0);
+				}
+
+				for(i = 0; i<n; i++) {
+					print("seta %s\n", get16name_low(reg_arg_1));
+					print("alu shl\n");
+					print("puta %s\n", get16name_low(reg_arg_1));
+					print("seta %s\n", get16name_high(reg_arg_1));
+					print("alu shlc\n");
+					print("puta %s\n", get16name_high(reg_arg_1));
+
+				}
+				target_reg = reg_arg_1;
+
+			} else {
+				not_implemented()
+			}
+
+
+		} else {
+			not_implemented()
+		}
+		d_end();
+		return target_reg;
+
+	case BCOM : 
+	case NEG :
+		assert(p->kids[0]);
+		assert(!p->kids[1]);
+		reg_arg_1 = dumptree(p->kids[0]);
+
+		d_start();
+		print("; generic p->op = %d\n", (generic(p->op)));
+		switch (generic(p->op))
+		{
+		case NEG:
+			cmd = "neg";
+			break;
+		case BCOM:
+			cmd = "not";
+			break;
+		default:
+			assert(0);
+			break;
+		}
+
+		print("; cmd: %s\n", cmd);
+		if (opsize(p->op) == 1)
+		{
+			if (reg_arg_1 == no_reg)
+			{
+				pop("a");
+			}
+			else
+			{
+				print("seta %s\n", get8name(reg_arg_1));
+			}
+
+			print("alu %s\n", cmd);
+			free_reg8(reg_arg_1);
+
+			target_reg = alloc_reg8();
+			if (target_reg == no_reg)
+			{
+				push("a");
+			}
+			else
+			{
+				print("puta %s\n", get8name(target_reg));
+			}
+		}
+		else if (opsize(p->op) == 2)
+		{
+			if (reg_arg_1 == no_reg)
+			{
+				reg_arg_1 = alloc_reg16();
+				if (reg_arg_1 == no_reg)
+				{
+					print("; failed to alloc reg16 for alu operation\n");
+					//assert(0);
+				}
+				else
+				{
+					popw(get16name(reg_arg_1));
+				}
+			}
+
+			target_reg = alloc_reg16();
+
+			if ((
+							((reg_arg_1 == no_reg) ? 1 : 0) +
+							((target_reg == no_reg) ? 1 : 0)) > 1)
+			{
+				print("; more than one of reg16 are on stack for alu16, fail\n");
+				assert(0);
+			}
+
+			if (reg_arg_1 == no_reg)
+			{
+				pop("a");
+			}
+			else
+			{
+				print("seta %s\n", get16name_low(reg_arg_1));
+			}
+
+			print("alu %s\n", cmd);
+
+			if (target_reg == no_reg)
+			{
+				//endianness
+				//push low
+				push("a");
+			}
+			else
+			{
+				print("puta %s\n", get16name_low(target_reg));
+			}
+
+			if (reg_arg_1 == no_reg)
+			{
+				pop("a");
+			}
+			else
+			{
+				print("seta %s\n", get16name_high(reg_arg_1));
+			}
+
+			print("alu %s\n", cmd);
+
+			if (target_reg == no_reg)
+			{
+				//endianness
+				//reverse low and high
+				pop("b");
+
+				//push high
+				push("a");
+				//push low
+				push("b");
+			}
+			else
+			{
+				print("puta %s\n", get16name_high(target_reg));
+			}
+
+			free_reg16(reg_arg_1);
+		}
+		else
+		{
+			not_implemented()
+		}
+
+		d_end();
+		return target_reg;
 	case BOR : 
 	case BAND : 
 	case BXOR : 
@@ -1657,8 +1858,8 @@ static void I(emit)(Node p)
 			}
 			else
 			{
-				print("deleted something important!\n");
-				assert(0);
+				fprintf(stderr, "Deleted something from tree: %s\n",opname(p->op));
+				continue;
 			}
 		}
 		dumptree(p);
