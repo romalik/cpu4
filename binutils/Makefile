@@ -1,4 +1,4 @@
-CC=cc
+CC=gcc -O0 -g
 
 
 all: cpu4as cpu4ld

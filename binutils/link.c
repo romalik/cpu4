@@ -169,6 +169,8 @@ int main(int argc, char ** argv) {
     label_vec_size = ((uint16_t)header->label_vec_size_h << 8) | ((uint16_t)header->label_vec_size_l);
     label_mask_size = ((uint16_t)header->label_mask_size_h << 8) | ((uint16_t)header->label_mask_size_l);
 
+    printf("label_vec_size: %zu\n", label_vec_size);
+
     linker_add_image(
       raw_data[i] + sizeof(struct robj_header), 
       raw_data[i] + sizeof(struct robj_header) + obj_size,
@@ -177,6 +179,11 @@ int main(int argc, char ** argv) {
       label_vec_size,
       label_mask_size
       );
+  }
+  printf("Loaded labels:\n");
+  for(i = 0; i<loaded_files; i++) {
+    printf("file %d:\n", i);
+    print_labels(label_vecs[i]);
   }
 
   linker_offset_labels();

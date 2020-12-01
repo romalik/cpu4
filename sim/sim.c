@@ -10,6 +10,9 @@
 
 #include "cb.h"
 
+int fl_debug = 0;
+
+
 uint64_t start_time;
 
 uint64_t gettime_ms() {
@@ -470,7 +473,8 @@ void op_cmp() {
   aluop(&dummy, &r.f);
 }
 
-#define COND_MASK (((!CF) << 3) | (CF << 2) | ((!ZF) << 1) | (ZF))
+//cond mask : a czn
+#define COND_MASK ((1<<3) | (CF << 2) | (ZF << 1) | ((ZF|CF)?0:1))
 
 void op_jmp() {
   uint8_t tmp_h;
@@ -525,10 +529,17 @@ void op_sim_halt() {
   halt = 1;
 }
 
+void print_state();
+
 void op_sim_info() {
   printf(">>>>> SIM INFO %d!\n", mem_read(val16(r.p)));
+  if(mem_read(val16(r.p)) == 255) { fl_debug = 1; }
+  if(mem_read(val16(r.p)) == 254) { fl_debug = 0; }
+  print_state();
   inc16(r.p);  
   r.sect = 0;
+
+
   sleep(1);
 }
 
@@ -640,6 +651,8 @@ void print_state() {
   printf("IR:\t0x%02X\t|\t", r.ir);
   printf("sect:\t0x%02X\t|\t", r.sect);
   printf("op: %s\n", ops_text[((r.ir >> 4)&0xf)|(r.sect << 4)]);
+  printf("COND:\t0x%02X\t|\n", COND_MASK);
+  
   printf("==========");
   printf("==========");
   printf("==========");
@@ -673,10 +686,9 @@ void terminate() {
 int main(int argc, char ** argv) {
   int i;
   FILE * fp = fopen(argv[1], "r");
-  int step = 0;
   if(argc > 2) {
     if(!strcmp(argv[2], "-d")) {
-      step = 1;
+      fl_debug = 1;
     }
   }
 
@@ -699,7 +711,7 @@ int main(int argc, char ** argv) {
   start_time = gettime_ms();
 
   while(!halt) {
-    if(step) {
+    if(fl_debug) {
       print_state();
       usleep(250*1000);
       start_time += 250*1000;

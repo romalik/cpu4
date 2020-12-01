@@ -445,8 +445,10 @@ static unsigned char dumptree(Node p)
 	unsigned char spilled = 0;
 	unsigned char use_so = 0;
 	unsigned char total_arg_size = 0;
+	char need_swap = 0;
 	char *cmd;
 	int i;
+
 
 	last_emitted = generic(p->op);
 
@@ -1385,7 +1387,6 @@ static unsigned char dumptree(Node p)
 			else
 			{
 				print("seta %s\n", get16name_low(reg_arg_1));
-				print("puta b\n");
 			}
 
 			print("alu %s\n", cmd);
@@ -1497,19 +1498,19 @@ static unsigned char dumptree(Node p)
 			cmd = "z";
 			break;
 		case NE:
-			cmd = "nz";
+			cmd = "c n";
 			break;
 		case GT:
-			cmd = "nz nc";
-			break;
+			cmd = "n";
+			break;		
 		case GE:
-			cmd = "z nc";
+			cmd = "z n";
 			break;
 		case LE:
-			cmd = "z c";
+			cmd = "c z";
 			break;
 		case LT:
-			cmd = "nz c";
+			cmd = "c";
 			break;
 		default:
 			assert(0);
@@ -1537,6 +1538,7 @@ static unsigned char dumptree(Node p)
 				print("seta %s\n", get8name(reg_arg_1));
 				free_reg8(reg_arg_1);
 			}
+
 
 			print("cmp sub\n");
 			print("jmp %s $%s\n", cmd, p->syms[0]->x.name);
@@ -1570,6 +1572,7 @@ static unsigned char dumptree(Node p)
 			print("puta b\n");
 			print("seta %s\n", get16name_high(reg_arg_1));
 
+
 			print("cmp sub\n");
 
 			i = genlabel(1);
@@ -1585,6 +1588,7 @@ static unsigned char dumptree(Node p)
 			print("seta %s\n", get16name_low(reg_arg_2));
 			print("puta b\n");
 			print("seta %s\n", get16name_low(reg_arg_1));
+
 
 			print("cmp sub\n");
 			print("jmp %s $%s\n", cmd, p->syms[0]->x.name);

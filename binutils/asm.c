@@ -14,9 +14,9 @@
 
 uint16_t current_pos = 0;
 
-char image[1024];
-char label_vec[1024];
-char label_usage_list[1024];
+char image[65535];
+char label_vec[65535];
+char label_usage_list[65535];
 
 void emit(uint8_t opcode) {
   //printf("put 0x%02x at 0x%04x\n", opcode, current_pos);
@@ -102,23 +102,23 @@ void gen_instruction() {
         while(1) {
           get_next_token();
           //COND_MASK (((!CF) << 3) | (CF << 2) | ((!ZF) << 1) | (ZF))
-          if(!strcmp(token,"z")) {
+          //cond mask ACZN
+          if(!strcmp(token,"n")) {
             arg_id |= 1;
-          } else if(!strcmp((token), "nz")) {
-            arg_id = 2;
+          } else if(!strcmp((token), "z")) {
+            arg_id |= 2;
           } else if(!strcmp((token), "c")) {
-            arg_id = 4;
-          } else if(!strcmp((token), "nc")) {
-            arg_id = 8;
-          } else {            
-            if(arg_id == 0) { 
-              //jmp with no condition
-              arg_id = 15;
-            }
+            arg_id |= 4;
+          } else {     
+            if(arg_id == 0) {
+              arg_id = 8;
+            }       
+            //unconditional, jump on any cond mask
             unget_token();
             break;
           }
         }
+
         opcode |= arg_id;
         emit(opcode);
         return;
@@ -287,13 +287,13 @@ int main(int argc, char ** argv) {
 
   parser_set_file(infile);
 
-  memset(label_vec, 0, 1024);
+  memset(label_vec, 0, 65535);
   set_label_vec(label_vec);
   set_label_usage_list(label_usage_list);
 
   assemble();
 
-  //print_labels(label_vec);
+  print_labels(label_vec);
   //print_label_usage(get_label_usage_list_size());
   //hexdump(image, current_pos);
 
@@ -309,6 +309,9 @@ int main(int argc, char ** argv) {
 
   fclose(infile);
 
+  //hack to create empty field for linker
+  mark_label_position("",0);
+
   outfile = fopen(outfile_name, "wb");
 
   uint16_t label_vec_size = get_label_vec_size();
@@ -321,6 +324,7 @@ int main(int argc, char ** argv) {
   header.label_vec_size_h = high(label_vec_size);
   header.label_mask_size_l = low(label_mask_size);
   header.label_mask_size_h = high(label_mask_size);
+
 
   fwrite(&header, 1, sizeof(struct robj_header), outfile);
   fwrite(image, 1, current_pos, outfile);
