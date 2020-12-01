@@ -78,6 +78,21 @@ void mark_label_position(char * label, uint16_t pos) {
 
 uint16_t mark_label_use(char * label, uint16_t addr) {
   struct label_entry * e;
+  int offset = 0;
+  char * sign_pos = NULL;
+
+  sign_pos = strchr(label, '+');
+  if(!sign_pos) {
+    sign_pos = strchr(label, '-');
+  }
+
+  if(sign_pos) {
+    offset = atoi(sign_pos+1);
+    if(*sign_pos == '-') {
+      offset = -offset;
+    }
+    *sign_pos = 0;
+  }
 
   e = find_label(label, label_vec);
   if(!e) {
@@ -86,6 +101,9 @@ uint16_t mark_label_use(char * label, uint16_t addr) {
 
   *label_usage_list_pos = addr;
   label_usage_list_pos++;
-
+  /*
+  *label_usage_list_pos = addr;
+  label_usage_list_pos++;
+  */
   return e->id;
 }

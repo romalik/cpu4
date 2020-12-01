@@ -299,7 +299,7 @@ int main(int argc, char ** argv) {
 
   assemble();
 
-  print_labels(label_vec);
+  //print_labels(label_vec);
   //print_label_usage(get_label_usage_list_size());
   //hexdump(image, current_pos);
 

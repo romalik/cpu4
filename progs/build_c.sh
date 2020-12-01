@@ -14,6 +14,7 @@ set -x
 
 rm $1.i $1.s $1.o stdlib.i stdlib.o start.o
 
-hexdump -C $1.bin
+#hexdump -C $1.bin
+
 ../sim/cpu4sim $1.bin
 

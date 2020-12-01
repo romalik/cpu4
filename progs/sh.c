@@ -62,6 +62,7 @@ int main() {
 
       if(!strcmp(in_str, "test")) {
          puts(">> Test successfull\n");
+         funcs[1]();
       }
 
       cmd_idx = get_cmd_idx(in_str);
