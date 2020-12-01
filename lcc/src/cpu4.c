@@ -449,6 +449,23 @@ static unsigned char dumptree(Node p)
 	char *cmd;
 	int i;
 
+	char is_signed = optype(p->op);
+	switch (optype(p->op)) {
+	case I:
+		is_signed = 1;
+		break;
+	case P:
+	case U:
+		is_signed = 0;
+		break;
+	case F:
+	case V:
+	case B:
+		is_signed = 0;
+		break;
+	default:
+	   assert(0);
+	}
 
 	last_emitted = generic(p->op);
 
@@ -1495,22 +1512,22 @@ static unsigned char dumptree(Node p)
 		switch (generic(p->op))
 		{
 		case EQ:
-			cmd = "z";
+			cmd = "e";
 			break;
 		case NE:
-			cmd = "c n";
+			cmd = "ne";
 			break;
 		case GT:
-			cmd = "n";
+			cmd = "g";
 			break;		
 		case GE:
-			cmd = "z n";
+			cmd = "ge";
 			break;
 		case LE:
-			cmd = "c z";
+			cmd = "le";
 			break;
 		case LT:
-			cmd = "c";
+			cmd = "l";
 			break;
 		default:
 			assert(0);
@@ -1541,7 +1558,7 @@ static unsigned char dumptree(Node p)
 
 
 			print("cmp sub\n");
-			print("jmp %s $%s\n", cmd, p->syms[0]->x.name);
+			print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
 		}
 		else if ((opsize(p->op)) == 2)
 		{
@@ -1577,9 +1594,9 @@ static unsigned char dumptree(Node p)
 
 			i = genlabel(1);
 
-			print("jmp z $__jump_label__%d\n", i);
+			print("jmp e $__jump_label__%d\n", i);
 			if ((generic(p->op)) != EQ)
-				print("jmp %s $%s\n", cmd, p->syms[0]->x.name);
+				print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
 			print("jmp $__jump_label_2__%d\n", i);
 			print("__jump_label__%d:\n", i);
 
@@ -1591,7 +1608,7 @@ static unsigned char dumptree(Node p)
 
 
 			print("cmp sub\n");
-			print("jmp %s $%s\n", cmd, p->syms[0]->x.name);
+			print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
 
 			print("__jump_label_2__%d:\n", i);
 

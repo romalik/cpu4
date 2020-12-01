@@ -263,6 +263,7 @@ struct regs r;
 #define low(x) (x[0])
 #define high(x) (x[1])
 #define val16(x) (x[0] | (x[1]<<8))
+#define SF ((r.f & 0x4) >> 2)
 #define ZF ((r.f & 0x2) >> 1)
 #define CF (r.f & 0x1)
 
@@ -271,6 +272,7 @@ void aluop(uint8_t *res, uint8_t *flags) {
 
   uint8_t Z;
   uint8_t C;
+  uint8_t S;
   uint16_t tmp;
   switch(ARG) {
     case 0:
@@ -318,8 +320,12 @@ void aluop(uint8_t *res, uint8_t *flags) {
 
   Z = ((tmp & 0xff) == 0)?1:0;
   C = ((tmp & 0xff00) == 0)?0:1;
+  S = ((tmp & 0x80))?1:0;
   *res = (tmp & 0xff);
-  *flags = (Z << 1) | (C);
+  *flags = (S << 2) | (Z << 1) | (C);
+
+  //printf("\n>>>> ALU\ntmp: %d 0x%04x\nZ: %d\nC: %d\nS: %d\nres: %d\nflags: %d\n>>>>\n\n", tmp, tmp, Z, C, S, *res, *flags);
+
 }
 
 uint8_t sel_get_value(uint8_t sel) {
@@ -473,19 +479,47 @@ void op_cmp() {
   aluop(&dummy, &r.f);
 }
 
-//cond mask : a czn
-#define COND_MASK ((1<<3) | (CF << 2) | (ZF << 1) | ((ZF|CF)?0:1))
+//cond mask : czn
+
+#define IS ((ARG & 0x8)>>3)
+#define IC ((ARG & 0x4)>>2)
+#define IZ ((ARG & 0x2)>>1)
+#define IN ((ARG & 0x1))
 
 void op_jmp() {
   uint8_t tmp_h;
   uint8_t tmp_l;
+/*
+  uint8_t cond_mask = 
+      (((IS&SF)^(CF)) << 2)
+    | ((ZF)           << 1)
+    | (((IS&SF)^(NF)))
+  ;
+*/
+
+  //printf("IS : %d\nSF: %d\nCF: %d\nZF: %d\n", IS, SF, CF, ZF);
+
+  uint8_t f1 = ( (IS&SF) | (CF) );
+  uint8_t f2 = ZF;
+
+  uint8_t cond_mask = 
+      ((f1)        << 2)
+    | ((f2)        << 1)
+    | (~(f1|f2)&0x01)
+  ;
+
+
+  //printf("cond mask: 0x%02X\n", cond_mask);
+  //printf("arg  mask: 0x%02X\n", (ARG&0x7));
 
   tmp_l = mem_read(val16(r.p));
   inc16(r.p);
   tmp_h = mem_read(val16(r.p));
   inc16(r.p);
 
-  if(COND_MASK & ARG) {
+
+
+  if(cond_mask & (ARG&0x7)) {
     low(r.p) = tmp_l;
     high(r.p) = tmp_h;
   }
@@ -651,7 +685,7 @@ void print_state() {
   printf("IR:\t0x%02X\t|\t", r.ir);
   printf("sect:\t0x%02X\t|\t", r.sect);
   printf("op: %s\n", ops_text[((r.ir >> 4)&0xf)|(r.sect << 4)]);
-  printf("COND:\t0x%02X\t|\n", COND_MASK);
+
   
   printf("==========");
   printf("==========");

@@ -101,17 +101,23 @@ void gen_instruction() {
         arg_id = 0;
         while(1) {
           get_next_token();
-          //COND_MASK (((!CF) << 3) | (CF << 2) | ((!ZF) << 1) | (ZF))
-          //cond mask ACZN
-          if(!strcmp(token,"n")) {
-            arg_id |= 1;
-          } else if(!strcmp((token), "z")) {
-            arg_id |= 2;
-          } else if(!strcmp((token), "c")) {
-            arg_id |= 4;
+          if(!strcmp(token,"g")) {
+            arg_id |= 0x1;
+          } else if(!strcmp((token), "ge")) {
+            arg_id |= 0x3;
+          } else if(!strcmp((token), "e")) {
+            arg_id |= 0x2;
+          } else if(!strcmp((token), "le")) {
+            arg_id |= 0x6;
+          } else if(!strcmp((token), "l")) {
+            arg_id |= 0x4;
+          } else if(!strcmp((token), "ne")) {
+            arg_id |= 0x5;
+          } else if(!strcmp((token), "s")) {
+            arg_id |= 0x8;
           } else {     
             if(arg_id == 0) {
-              arg_id = 8;
+              arg_id = 7;
             }       
             //unconditional, jump on any cond mask
             unget_token();

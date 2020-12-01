@@ -2,6 +2,8 @@ void putc(char c) {
   *(char*)0x4000 = c;
 }
 
+
+
 void less() {
     putc('<');
     putc('\n');
@@ -37,9 +39,11 @@ void line() {
 }
 
 int main() {
-  int a = 3;
-  int b = 2;
-  for(b = 0; b<3; b++) {
+  //int a = 3;
+  int a = 7;
+  int b = 0;
+//  for(b = 0; b<3; b++) {
+  for(b = -4; b<-1; b++) {
     line();
 
     if(a + b > 4) {
