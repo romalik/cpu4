@@ -64,6 +64,7 @@ liblcc:	$Bliblcc$A
 #	$Bbytecode$O \
 #	$Bxbytecode$O \
 #	$Bcpu4$O \
+#	$Bcpu4_impl$O \
 #	$Balpha$O \
 #	$Bmips$O \
 #	$Bsparc$O \
@@ -100,6 +101,7 @@ RCCOBJS=$Balloc$O \
 	$Bgen$O \
 	$Bxbytecode$O \
 	$Bcpu4$O \
+	$Bcpu4_impl$O \
 	$Bstab$O
 
 $Brcc$E::	$Bmain$O $Blibrcc$A $(EXTRAOBJS)
@@ -135,8 +137,9 @@ $Bstring$O:	src/string.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/string.c
 $Bsym$O:	src/sym.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/sym.c
 $Bsymbolic$O:	src/symbolic.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/symbolic.c
 $Bbytecode$O:	src/bytecode.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/bytecode.c
-$Bxbytecode$O:	src/xbytecode.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/xbytecode.c
+$Bxbytecode$O:	src/xbytecode.c;$(CC) $(CFLAGS) -c -Isrc -o $@ src/xbytecode.c
 $Bcpu4$O:	src/cpu4.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/cpu4.c
+$Bcpu4_impl$O:	src/cpu4_impl.c;$(CC) $(CFLAGS) -c -Isrc -o $@ src/cpu4_impl.c
 $Btrace$O:	src/trace.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/trace.c
 $Btree$O:	src/tree.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/tree.c
 $Btypes$O:	src/types.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/types.c
@@ -298,6 +301,7 @@ RCCSRCS=src/alloc.c \
 	src/bytecode.c \
 	src/xbytecode.c \
 	src/cpu4.c \
+	src/cpu4_impl.c \
 	src/gen.c \
 	src/stab.c \
 	$Bdagcheck.c \

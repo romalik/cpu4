@@ -43,3 +43,30 @@ char *strcpy(char *dst, const char *src)
 
 	return dst;
 }
+
+char printnum_buffer[8];
+void printnum(int n) {
+	char neg = 0;
+	char * s = printnum_buffer + 7;
+	char n_rem;
+	*s = 0;
+	s--;
+	if(n == 0) {
+		*s = '0';
+		s--;
+	}
+	if(n < 0) {
+		neg = 1;
+		n = -n;
+	}
+	while(n) {
+		n_rem = n % 10;
+		*s = n_rem + '0';
+		n = n / 10;
+	}
+	if(neg) {
+		*s = '-';
+		s++;
+	}
+	puts(s);
+}

@@ -81,7 +81,8 @@ char get_next_token() {
 
     if((c = b_getc(infile)) == EOF) {
       token[len] = 0;
-      eof_hit = 1;
+      if(len == 0)
+        eof_hit = 1;
         //printf("eof\n");
       return len;
     }

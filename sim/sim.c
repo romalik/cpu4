@@ -626,6 +626,41 @@ void op_s_mm() {
   r.sect = 0;
 }
 
+void op_put_rel_sp() {
+  r.off = mem_read(val16(r.p));
+  inc16(r.p);
+
+  mem_write(val16(r.s)+r.off, sel_get_value(ARG)); 
+
+}
+
+void op_get_rel_sp() {
+  r.off = mem_read(val16(r.p));
+  inc16(r.p);
+
+  sel_set_value(ARG, mem_read(val16(r.s) + r.off));  
+}
+
+void op_put_rel_sp_w() {
+  r.off = mem_read(val16(r.p));
+  inc16(r.p);
+
+  mem_write(val16(r.s)+r.off, sel_get_value(ARG)); 
+  inc16(r.s);
+  mem_write(val16(r.s)+r.off, sel_get_value(ARG | 0x01)); 
+  dec16(r.s);
+}
+
+void op_get_rel_sp_w() {
+  r.off = mem_read(val16(r.p));
+  inc16(r.p);
+
+  sel_set_value(ARG, mem_read(val16(r.s) + r.off));  
+  inc16(r.s);
+  sel_set_value(ARG | 0x01, mem_read(val16(r.s) + r.off));  
+  dec16(r.s);
+}
+
 void (*ops[])(void) = {
   /*sect 00*/
 op_nop,   op_seta,  op_puta,  op_lit, op_litw,  op_push,  op_pop,   op_pushw,
@@ -641,7 +676,7 @@ op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 
   /*sect 11*/
 op_x_pp,   op_x_mm,   op_y_pp,  op_y_mm,  op_s_pp,  op_s_mm,  op_calls,    op_err,
-op_err,    op_err,    op_err,   op_err,   op_err,   op_err,   op_sim_info, op_sim_halt,
+op_put_rel_sp,    op_get_rel_sp,    op_put_rel_sp_w,   op_get_rel_sp_w,   op_err,   op_err,   op_sim_info, op_sim_halt,
 
 };
 

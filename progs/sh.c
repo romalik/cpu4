@@ -2,7 +2,6 @@
 
 #define MAX_LENGTH 127
 
-
 void test_func() {
    puts("this is a test func\n");   
 }
@@ -50,9 +49,32 @@ void getline() {
 
 }
 
+char buffer[30];
+
 int main() {
    char c;
    int cmd_idx;
+   int a;
+   int b = 5;
+
+   //printnum(a*b);
+
+   buffer[b] = '0';
+
+   for(b = 0; b<10; b++) {
+      //a = 9-b;
+      //buffer[b] = '0';//+b;
+   }
+   buffer[10] = 0;
+   puts(buffer);
+
+   for(a = 15; a > 0; a--) {
+      for(b = 0; b<a; b++) {
+         putc('*');
+      }
+      putc('\n');
+   }
+
    while(1) {
       puts("> ");
       getline();
@@ -61,7 +83,7 @@ int main() {
       puts("\n");
 
       if(!strcmp(in_str, "test")) {
-         puts(">> Test successfull\n");
+         puts(">> Test successful\n");
          funcs[1]();
       }
 
@@ -73,4 +95,6 @@ int main() {
          funcs[cmd_idx]();
       }
    }
+   return 0;
 }
+

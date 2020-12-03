@@ -157,7 +157,37 @@ void gen_instruction() {
     opcode = (15 << 4) | arg_id;
     emit(opcode);
 
+    opcode = keyword_id;
     switch(keyword_id) {
+      case 8: //put_rel_sp
+      case 9: //get_rel_sp
+        expect_args = 1;
+        get_next_token();
+        if(eof_hit) {
+          panic("Unexpected EOF");
+        }
+        arg_id = find_keyword(args, token);
+        if(arg_id > 15) {
+          panic("Bad argument");
+        }
+        opcode |= arg_id;
+        emit(opcode);
+        return;
+      case 10: //put_rel_sp_w
+      case 11: //get_rel_sp_w
+        expect_args = 1;
+        get_next_token();
+        if(eof_hit) {
+          panic("Unexpected EOF");
+        }
+        arg_id = find_keyword(reg_16_names, token);
+        if(arg_id > 15) {
+          panic("Bad argument");
+        }
+        opcode |= arg_id;
+        emit(opcode);
+        return;
+
       case 14:
       //info
         emit(keyword_id << 4);

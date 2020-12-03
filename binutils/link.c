@@ -99,17 +99,19 @@ void linker_link() {
   struct label_entry * e;
   int curr_file;
   int i;
+  int offset;
   uint16_t addr;
   uint16_t id;
   for(curr_file = 0; curr_file < loaded_files; curr_file++) {
-    for(i = 0; i<label_mask_sizes[curr_file]; i++) {
+    for(i = 0; i<label_mask_sizes[curr_file]; i+=2) {
       addr = label_masks[curr_file][i];
+      offset = label_masks[curr_file][i+1];
       id = (images[curr_file][addr]) | (images[curr_file][addr+1] << 8);
 
       e = find_located_label(id, curr_file);
       if(e) {
-        images[curr_file][addr] = low(e->position);
-        images[curr_file][addr+1] = high(e->position);
+        images[curr_file][addr] = low((e->position + offset));
+        images[curr_file][addr+1] = high((e->position + offset));
       } else {
         exit(1);
       }

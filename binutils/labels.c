@@ -1,5 +1,8 @@
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
 #include "util.h"
 #include "labels.h"
 
@@ -75,6 +78,28 @@ void mark_label_position(char * label, uint16_t pos) {
   e->present = 1;
 }
 
+int calculate_offset_sum(char * str) {
+  char * s = str;
+  char * p;
+  int offset = 0;
+  int sign = 1;
+  while(1) {
+    p = strchr(s, '+');
+    if(p == NULL) {
+      p = strchr(s, '-');
+    }
+    if(p == NULL) return offset;
+
+    s = p;
+    if(*s == '+') {
+      sign = 1;
+    } else if(*s == '-') {
+      sign = -1;
+    }
+    s++;
+    offset += sign * atoi(s);
+  }
+}
 
 uint16_t mark_label_use(char * label, uint16_t addr) {
   struct label_entry * e;
@@ -87,10 +112,8 @@ uint16_t mark_label_use(char * label, uint16_t addr) {
   }
 
   if(sign_pos) {
-    offset = atoi(sign_pos+1);
-    if(*sign_pos == '-') {
-      offset = -offset;
-    }
+    offset = calculate_offset_sum(sign_pos);
+//    fprintf(stderr, "asm: label %s offset %d\n", label, offset);
     *sign_pos = 0;
   }
 
@@ -101,9 +124,9 @@ uint16_t mark_label_use(char * label, uint16_t addr) {
 
   *label_usage_list_pos = addr;
   label_usage_list_pos++;
-  /*
-  *label_usage_list_pos = addr;
+  
+  *label_usage_list_pos = offset;
   label_usage_list_pos++;
-  */
+  
   return e->id;
 }

@@ -56,10 +56,10 @@ mid-function:
 |.local2l|
 |.local1.|
 |.local0.|
-|.spill0.|
-|.spill1.|
-|.spill2.|
 |.spill3.|
+|.spill2.|
+|.spill1.|
+|.spill0.|
 |........|\
 |.stuff..| | - current_off
 |........|/
