@@ -177,8 +177,9 @@ struct node {
 	short op;
 	short count;
 	int depth;
-	int target_reg;
-	int spill_id;
+	int target;
+	int generated;
+	int emitted;
  	Symbol syms[3];
 	Node kids[2];
 	Node link;

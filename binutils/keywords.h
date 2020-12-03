@@ -54,8 +54,8 @@ char * args[16] = {
   "yh", 
   "sl", 
   "sh", 
-  "zl", 
-  "zh", 
+  "sol", 
+  "soh", 
   "off", 
   "m[so]", 
   "~m[z]", 
@@ -117,8 +117,8 @@ char * opcodes_3[16] = {
   "get_rel_sp",   /* 9 1 */
   "put_rel_sp_w",   /* 10 1*/
   "get_rel_sp_w",   /* 11 1*/
-  "nop",   /* 12 0*/
-  "nop",   /* 13 0*/
+  "setb",   /* 12 0*/
+  "putb",   /* 13 0*/
   "info",  /* 14 2*/
   "halt"   /* 15 -*/
    

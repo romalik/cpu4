@@ -187,6 +187,20 @@ void gen_instruction() {
         opcode |= arg_id;
         emit(opcode);
         return;
+      case 12: //setb
+      case 13: //putb
+        //no args expected
+        get_next_token();
+        if(eof_hit) {
+          panic("Unexpected EOF");
+        }
+        arg_id = find_keyword(args, token);
+        if(arg_id > 15) {
+          panic("Bad argument");
+        }
+        opcode |= arg_id;
+        emit(opcode);
+        return;
 
       case 14:
       //info

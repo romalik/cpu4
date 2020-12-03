@@ -348,9 +348,9 @@ uint8_t sel_get_value(uint8_t sel) {
     case 7:
       return high(r.s);
     case 8:
-      return low(r.z);
+      return (val16(r.s) + r.off)&0xff;
     case 9:
-      return high(r.z);
+      return ((val16(r.s) + r.off) >> 8)&0xff;
     case 10:
       return r.off;
     case 11:
@@ -396,10 +396,12 @@ void sel_set_value(uint8_t sel, uint8_t val) {
       high(r.s) = val;
       break;
     case 8:
-      low(r.z) = val;
+      fprintf(stderr, "sol write!\n");
+      assert(0);
       break;
     case 9:
-      high(r.z) = val;
+      fprintf(stderr, "soh write!\n");
+      assert(0);
       break;
     case 10:
       r.off = val;
@@ -432,6 +434,12 @@ void op_seta() {
   r.a = sel_get_value(ARG);  
 }
 void op_puta() {
+  sel_set_value(ARG, r.a);  
+}
+void op_setb() {
+  r.a = sel_get_value(ARG);  
+}
+void op_putb() {
   sel_set_value(ARG, r.a);  
 }
 void op_lit() {
@@ -676,7 +684,7 @@ op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 
   /*sect 11*/
 op_x_pp,   op_x_mm,   op_y_pp,  op_y_mm,  op_s_pp,  op_s_mm,  op_calls,    op_err,
-op_put_rel_sp,    op_get_rel_sp,    op_put_rel_sp_w,   op_get_rel_sp_w,   op_err,   op_err,   op_sim_info, op_sim_halt,
+op_put_rel_sp,    op_get_rel_sp,    op_put_rel_sp_w,   op_get_rel_sp_w,   op_setb,   op_putb,   op_sim_info, op_sim_halt,
 
 };
 

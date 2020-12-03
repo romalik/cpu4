@@ -19,6 +19,7 @@ xx(null,         nullIR)
 
 #define yy \
 xx(cpu4,     cpu4IR) \
+xx(cpu4_tree,     cpu4_treeIR) \
 xx(xbytecode,     xbytecodeIR) \
 xx(null,         nullIR)
 
