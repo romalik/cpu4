@@ -45,6 +45,34 @@ char *strcpy(char *dst, const char *src)
 }
 
 char printnum_buffer[8];
+
+void printhex(unsigned int n) {
+	char * s = printnum_buffer + 7;
+	char n_rem;
+	*s = 0;
+	s--;
+	
+	if(n == 0) {
+		*s = '0';
+		s--;
+	}
+	
+	while(n) {
+		n_rem = n & 0x0f;
+		if(n_rem > 9) {
+			*s = n_rem + 'A';
+		} else {
+			*s = n_rem + '0';
+		}
+		n = n >> 4;
+	}
+	*s = 'x';
+	s--;
+	*s = '0';
+	puts(s);
+}
+
+/*
 void printnum(int n) {
 	char neg = 0;
 	char * s = printnum_buffer + 7;
@@ -70,3 +98,5 @@ void printnum(int n) {
 	}
 	puts(s);
 }
+*/
+

@@ -157,7 +157,7 @@ void gen_instruction() {
     opcode = (15 << 4) | arg_id;
     emit(opcode);
 
-    opcode = keyword_id;
+    opcode = (keyword_id << 4);
     switch(keyword_id) {
       case 8: //put_rel_sp
       case 9: //get_rel_sp

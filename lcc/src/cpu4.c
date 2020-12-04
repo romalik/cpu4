@@ -340,19 +340,19 @@ struct op_processors procs[] = {
 	{BOR, 				{nop,			alu,		alu,		nop}},
 	{BAND, 				{nop,			alu,		alu,		nop}},
 	{BXOR, 				{nop,			alu,		alu,		nop}},
-	{RSH, 				{nop,			nop,			nop,			nop}},
-	{LSH,					{nop,			nop,			nop,			nop}},
+	{RSH, 				{nop,			shr,		shr,		nop}},
+	{LSH,					{nop,			shl,		shl,		nop}},
 	{ADD, 				{nop,			alu,		alu,		nop}},
 	{SUB, 				{nop,			alu,		alu,		nop}},
 	{DIV, 				{nop,			nop,			nop,			nop}},
 	{MUL, 				{nop,			nop,			nop,			nop}},
 	{MOD,					{nop,			nop,			nop,			nop}},
-	{EQ, 					{nop,			nop,			nop,			nop}},
-	{NE, 					{nop,			nop,			nop,			nop}},
-	{GT, 					{nop,			nop,			nop,			nop}},
-	{GE, 					{nop,			nop,			nop,			nop}},
-	{LE, 					{nop,			nop,			nop,			nop}},
-	{LT,				  	{nop,			nop,			nop,			nop}},
+	{EQ, 					{nop,			cond_br,		cond_br,		nop}},
+	{NE, 					{nop,			cond_br,		cond_br,		nop}},
+	{GT, 					{nop,			cond_br,		cond_br,		nop}},
+	{GE, 					{nop,			cond_br,		cond_br,		nop}},
+	{LE, 					{nop,			cond_br,		cond_br,		nop}},
+	{LT,				  	{nop,			cond_br,		cond_br,		nop}},
 
 	0, {0,0,0,0}
 };
@@ -378,7 +378,7 @@ static void dump_op(int generic_op, Node p) {
 	}
 	while(1) {
 		if(procs[i].generic_op == 0) {
-			print("WTF %s\n", opname(generic_op));
+			fprintf(stderr, "WTF %s\n", opname(generic_op));
 			assert(0);
 		}
 		if(procs[i].generic_op == generic_op) {
@@ -407,9 +407,9 @@ static void dumptree_dbg(Node p)
 		target_type = "SPILL";
 	}
 
-	for (i = 0; i < ident; i++) print(" ");
+	for (i = 0; i < ident; i++) print(" - ");
 
-	print("-> %s%s %s count: %d depth: %d target: %s %d\n\n",
+	print("-> %s%s %s count: %d depth: %d target: %s %d\n",
 				p->emitted?"[EMITTED PREVIOUSLY] ":"",
 				opname(p->op), (p->syms) ? ((p->syms[0]) ? (p->syms[0]->x.name ? p->syms[0]->x.name : "") : ("")) : "", 
 				p->count,
@@ -420,7 +420,7 @@ static void dumptree_dbg(Node p)
 	p->emitted = 1;
 
 
-	ident += 3;
+	ident += 1;
 	if (generic(p->op) == CALL)
 	{
 		for (i = 0; i < ident - 3; i++)
@@ -442,7 +442,7 @@ static void dumptree_dbg(Node p)
 		dumptree_dbg(p->kids[0]);
 	if (p->kids[1])
 		dumptree_dbg(p->kids[1]);
-	ident -= 3;
+	ident -= 1;
 	return;
 
 }
@@ -455,8 +455,7 @@ void dumptree(Node p)
 
 	if(p->emitted) return;
 
-
-	ident += 3;
+	last_emitted = generic(p->op);
 
 	if(generic(p->op) == CALL) {
 		for (i = 0; i < 15; i++) {
@@ -473,7 +472,6 @@ void dumptree(Node p)
 	if (p->kids[1])
 		dumptree(p->kids[1]);
 
-/////
 	if(!is_target(p->target)) {
 		target_type = "NO TARGET";
 	} else if(is_target_reg(p->target)) {
@@ -482,9 +480,7 @@ void dumptree(Node p)
 		target_type = "SPILL";
 	}
 
-	for (i = 0; i < ident; i+=3) print(" - ");
-
-	print("-> %s%s %s count: %d depth: %d target: %s %d\n\n",
+	print("\n; -> %s%s %s count: %d depth: %d target: %s %d\n",
 				p->emitted?"[EMITTED PREVIOUSLY] ":"",
 				opname(p->op), (p->syms) ? ((p->syms[0]) ? (p->syms[0]->x.name ? p->syms[0]->x.name : "") : ("")) : "", 
 				p->count,
@@ -494,9 +490,6 @@ void dumptree(Node p)
 
 
 
-/////
-
-	print("opname : %s\n", opname(p->op));
 	dump_op(generic(p->op), p);
 	p->emitted = 1;
 	ident -= 3;
@@ -579,19 +572,39 @@ static void I(function)(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	maxargoffset = maxoffset = argoffset = offset = 0;
 	clear_spill_mask();
 	n_spill = 0;
+
+
 	gencode(caller, callee);
+
+
 	//wierd f->type->type->size to get return size
 	current_func_retsize = f->type->type->size;
 	current_sp_offset = 0;
-	print("; function %s [%d] %d %d\n", f->x.name, f->type->type->size, maxoffset, maxargoffset);
+	print("\n\n; function %s [%d] %d %d\n", f->x.name, f->type->type->size, maxoffset, maxargoffset);
 	print("%s:\n", f->x.name);
 	print("; alloc %d for locals\n", maxoffset);
 	print("; n_spill = %d\n", n_spill);
+	
 	//offset_sp(-(maxoffset + n_spill));
+   print("; create instruction for this !\n");
+	print("lit off %d\n", -(maxoffset + n_spill*2));
+	print("seta sol\n");
+   print("setb soh\n");
+   print("puta sl\n");
+   print("putb sh\n");
+   print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
+
 	emitcode();
+
 	print("; end function %s\n", f->x.name);
 	if(last_emitted != RET) {
-		offset_sp(get_retaddr_sp_offset()-1);
+	  	print("; create instruction for this !\n");
+		print("lit off %d\n", get_retaddr_sp_offset()-1);
+		print("seta sol\n");
+  		print("setb soh\n");
+  		print("puta sl\n");
+ 	 	print("putb sh\n");
+  		print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
 		print("ret\n");
 	}
 }
@@ -613,19 +626,6 @@ static void gen02(Node p)
 	}
 }
 
-int mandatory_spill(Node p) {
-	switch(generic(p->op)) {
-		case BOR:
-		case BAND:
-		case BXOR:
-		case ADD:
-		case SUB:
-			return 1;
-		default:
-			return 0;
-	}
-}
-
 
 static void gen_node(Node p, int * depth, unsigned int target)
 {
@@ -643,14 +643,15 @@ static void gen_node(Node p, int * depth, unsigned int target)
 	//calculate_depth
 	if (p)
 	{
-		for(i = 0; i<ident; i++) print(" ");
-		print("gen %s count %d\n", opname(p->op), p->count);
-		ident+=3;
+		//for(i = 0; i<ident; i++) print(" ");
+		//print("gen %s count %d\n", opname(p->op), p->count);
+		//ident+=3;
 		n_kids = ((p->kids[0])?1:0) + ((p->kids[1])?1:0);
 
 		if(p->kids[0]) {
 			if(!p->kids[0]->generated) {
 				if(p->kids[0]->count > 1) {
+					
 					kid_0_result_preserved = 1;
 				}
 				//put result to spill in second kid present, or if intermediate to be used later
@@ -678,7 +679,7 @@ static void gen_node(Node p, int * depth, unsigned int target)
 			}
 		}
 
-		ident-=3;
+		//ident-=3;
 		if(is_target_spill(target_kid_0)) {
 			if(!kid_0_result_preserved) {
 				free_spill(get_target(target_kid_0));
@@ -701,7 +702,7 @@ static void gen_node(Node p, int * depth, unsigned int target)
 		}
 
 		if(!is_target(target)) {
-			if(generic(p->op) == CALL) {
+			if(p->count > 0) {
 				target = create_spill_target(alloc_spill());
 			}
 		}

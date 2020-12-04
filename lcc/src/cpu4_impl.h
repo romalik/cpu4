@@ -29,3 +29,9 @@ void ret(Node);
 void call_op(Node);
 
 void asgn_op(Node);
+
+void cond_br(Node);
+
+void shl(Node);
+
+void shr(Node);

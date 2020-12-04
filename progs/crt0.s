@@ -1,4 +1,4 @@
-litw s 0xffd0
+litw s 0xffff
 call $main
 halt
 

@@ -57,16 +57,8 @@ int main() {
    int a;
    int b = 5;
 
-   //printnum(a*b);
-
-   buffer[b] = '0';
-
-   for(b = 0; b<10; b++) {
-      //a = 9-b;
-      //buffer[b] = '0';//+b;
-   }
-   buffer[10] = 0;
-   puts(buffer);
+   printhex(0x1234);
+   putc('\n');
 
    for(a = 15; a > 0; a--) {
       for(b = 0; b<a; b++) {

@@ -41,8 +41,8 @@ char * alu_args[16] = {
   "xor", 
   "zero", 
   "NOP", 
-  "NOP", 
-  "NOP"
+  "shr", 
+  "shrc"
 
 };
 char * args[16] = {

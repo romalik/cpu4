@@ -263,10 +263,17 @@ struct regs r;
 #define ARG (r.ir & 0xf)
 #define low(x) (x[0])
 #define high(x) (x[1])
-#define val16(x) (x[0] | (x[1]<<8))
+#define val16(x) (((uint16_t)x[0]) | (((uint16_t)x[1])<<8))
 #define SF ((r.f & 0x4) >> 2)
 #define ZF ((r.f & 0x2) >> 1)
 #define CF (r.f & 0x1)
+
+uint16_t sign_extend(uint8_t f) {
+  uint16_t ret = 0;
+  ret = f;
+  if(f&0x80) ret |= 0xff00;
+  return ret;
+}
 
 void aluop(uint8_t *res, uint8_t *flags) {
 
@@ -315,6 +322,12 @@ void aluop(uint8_t *res, uint8_t *flags) {
     case 12:
       tmp = 0;
       break;
+    case 14:
+      tmp = (r.a >> 1) | ((uint16_t)(r.a&0x01) << 8);
+      break;
+    case 15:
+      tmp = (r.a >> 1) | ((uint16_t)(r.a&0x01) << 8) | ((r.f & 0x01) << 7);
+      break;
     default:
       break;
 
@@ -349,13 +362,13 @@ uint8_t sel_get_value(uint8_t sel) {
     case 7:
       return high(r.s);
     case 8:
-      return (val16(r.s) + r.off)&0xff;
+      return (val16(r.s) + sign_extend(r.off))&0xff;
     case 9:
-      return ((val16(r.s) + r.off) >> 8)&0xff;
+      return ((val16(r.s) + (uint16_t)sign_extend(r.off)) >> 8)&0xff;
     case 10:
       return r.off;
     case 11:
-      return mem_read(val16(r.s) + r.off);
+      return mem_read(val16(r.s) + sign_extend(r.off));
     case 12:
       return mem_read(val16(r.z));
     case 13:
@@ -398,17 +411,17 @@ void sel_set_value(uint8_t sel, uint8_t val) {
       break;
     case 8:
       fprintf(stderr, "sol write!\n");
-      assert(0);
+      terminate();
       break;
     case 9:
       fprintf(stderr, "soh write!\n");
-      assert(0);
+      terminate();
       break;
     case 10:
       r.off = val;
       break;
     case 11:
-      mem_write(val16(r.s) + r.off, val);
+      mem_write(val16(r.s) + sign_extend(r.off), val);
       break;
     case 12:
       mem_write(val16(r.z), val);
@@ -438,10 +451,13 @@ void op_puta() {
   sel_set_value(ARG, r.a);  
 }
 void op_setb() {
-  r.a = sel_get_value(ARG);  
+  r.b = sel_get_value(ARG);  
+  r.sect = 0;
+
 }
 void op_putb() {
-  sel_set_value(ARG, r.a);  
+  sel_set_value(ARG, r.b);  
+  r.sect = 0;
 }
 void op_lit() {
   sel_set_value(ARG, mem_read(val16(r.p)));
@@ -617,6 +633,8 @@ void op_calls() {
   
   low(r.p) = tmp_l;
   high(r.p) = tmp_h;
+  r.sect = 0;
+
 }
 
 void op_ext() {
@@ -679,7 +697,9 @@ void op_put_rel_sp() {
   r.off = mem_read(val16(r.p));
   inc16(r.p);
 
-  mem_write(val16(r.s)+r.off, sel_get_value(ARG)); 
+  mem_write(val16(r.s)+sign_extend(r.off), sel_get_value(ARG)); 
+  r.sect = 0;
+
 
 }
 
@@ -687,27 +707,30 @@ void op_get_rel_sp() {
   r.off = mem_read(val16(r.p));
   inc16(r.p);
 
-  sel_set_value(ARG, mem_read(val16(r.s) + r.off));  
+  sel_set_value(ARG, mem_read(val16(r.s) + sign_extend(r.off)));  
+  r.sect = 0;
 }
 
 void op_put_rel_sp_w() {
   r.off = mem_read(val16(r.p));
   inc16(r.p);
 
-  mem_write(val16(r.s)+r.off, sel_get_value(ARG)); 
+  mem_write(val16(r.s)+sign_extend(r.off), sel_get_value(ARG)); 
   inc16(r.s);
-  mem_write(val16(r.s)+r.off, sel_get_value(ARG | 0x01)); 
+  mem_write(val16(r.s)+sign_extend(r.off), sel_get_value(ARG | 0x01)); 
   dec16(r.s);
+  r.sect = 0;
 }
 
 void op_get_rel_sp_w() {
   r.off = mem_read(val16(r.p));
   inc16(r.p);
 
-  sel_set_value(ARG, mem_read(val16(r.s) + r.off));  
+  sel_set_value(ARG, mem_read(val16(r.s) + sign_extend(r.off)));  
   inc16(r.s);
-  sel_set_value(ARG | 0x01, mem_read(val16(r.s) + r.off));  
+  sel_set_value(ARG | 0x01, mem_read(val16(r.s) + sign_extend(r.off)));  
   dec16(r.s);
+  r.sect = 0;
 }
 
 void (*ops[])(void) = {
@@ -743,8 +766,8 @@ char * ops_text[] = {
 "op_err",   "op_err",   "op_err",   "op_err", "op_err",   "op_err",   "op_err",   "op_err",
 
   /*sect 11*/ 
-"op_x_pp",   "op_x_mm",   "op_y_pp",  "op_y_mm",  "op_s_pp",  "op_s_mm",  "op_err",      "op_err",
-"op_err",    "op_err",    "op_err",   "op_err",   "op_err",   "op_err",   "op_sim_info", "op_sim_halt",
+"op_x_pp",   "op_x_mm",   "op_y_pp",  "op_y_mm",  "op_s_pp",  "op_s_mm",  "op_calls",      "op_err",
+"op_put_rel_sp",    "op_get_rel_sp",    "op_put_erl_sp_w",   "op_get_rel_sp_w",   "op_setb",   "op_putb",   "op_sim_info", "op_sim_halt",
 
 };
 
@@ -764,18 +787,73 @@ void execute() {
 size_t cycle_counter = 0;
 void cycle() {
   fetch();
+  if(fl_debug) {
+    print_state();
+    usleep(250*1000);
+    start_time += 250*1000;
+  }
   execute();
+
   cycle_counter++;
 }
 
+
+void print_val_addr(uint16_t addr, int show_addr, char * name, uint16_t val, int val_sz) {
+  if(show_addr) {
+    printf("0x%04x: ",addr);
+  }
+  printf("%s\t", name);
+  if(val_sz == 1) {
+    printf("0x%02x\t", val);
+  } else if(val_sz == 2) {
+    printf("0x%04x\t", val);
+  }
+}
+
+void print_val(char * name, uint16_t val, int val_sz) {
+  print_val_addr(0,0,name,val,val_sz);
+}
+
+void print_stack(int soff) {
+  uint16_t addr = val16(r.s) + soff;
+  uint8_t val = mem_read(val16(r.s) + soff);
+  char tmp[8];
+  sprintf(tmp, "s%s%d", soff>=0?"+":"", soff);
+  print_val_addr(addr, 1, tmp, val, 1);
+}
+
 void print_state() {
+  int soff = 0;
   printf("==========");
   printf("==========");
   printf("==========");
   printf("==========");
   printf("==========");
   printf("==========\n");
-  printf("Cycle %zu\n", cycle_counter);
+  printf("Cycle %zu \t\t\t\t\top: %s\n", cycle_counter, ops_text[((r.ir >> 4)&0xf)|(r.sect << 4)]);
+
+  soff = 10;
+  print_val("A",r.a,1);printf("| ");print_stack(soff);printf("\n");
+  soff--;
+  print_val("B",r.b,1);printf("| ");print_stack(soff);printf("\n");
+  soff--;
+  print_val("X",val16(r.x),2);printf("| ");print_stack(soff);printf("\n");
+  soff--;
+  print_val("Y",val16(r.y),2);printf("| ");print_stack(soff);printf("\n");
+  soff--;
+  print_val("F",r.f,1);printf("| ");print_stack(soff);printf("\n");
+  soff--;
+  print_val("P",val16(r.p),2);printf("| ");print_stack(soff);printf("\n");
+  soff--;
+  print_val("S",val16(r.s),2);printf("| ");print_stack(soff);printf("\n");
+  soff--;
+  print_val("off",r.off,1);printf("| ");print_stack(soff);printf("\n");
+  soff--;
+  print_val("IR",r.ir,1);printf("| ");print_stack(soff);printf("\n");
+  soff--;
+  print_val("sect",r.sect,1);printf("| ");print_stack(soff);printf("\n");
+
+/*
   printf("A:\t0x%02X\t|\t", r.a);
   printf("B:\t0x%02X\t|\t", r.b);
   printf("F:\t0x%02X\n", r.f);
@@ -788,7 +866,7 @@ void print_state() {
   printf("IR:\t0x%02X\t|\t", r.ir);
   printf("sect:\t0x%02X\t|\t", r.sect);
   printf("op: %s\n", ops_text[((r.ir >> 4)&0xf)|(r.sect << 4)]);
-
+*/
   
   printf("==========");
   printf("==========");
@@ -818,6 +896,7 @@ void terminate() {
 
 
   printf("cycles: %zu\nips: %f\nns per instr: %zu\n", cycle_counter, ips, ns_per_instruction);
+  exit(0);
 }
 
 int main(int argc, char ** argv) {
@@ -848,11 +927,6 @@ int main(int argc, char ** argv) {
   start_time = gettime_ms();
 
   while(!halt) {
-    if(fl_debug) {
-      print_state();
-      usleep(250*1000);
-      start_time += 250*1000;
-    }
     cycle();
   }
 
