@@ -96,7 +96,7 @@ void gen_instruction() {
         //jmp, expect adr
         expect_args = 2;
       case 12:
-        //jmpX
+        //jmps
         // populate condition bits 
         arg_id = 0;
         while(1) {

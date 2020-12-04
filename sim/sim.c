@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <termios.h>
 #include <pthread.h>
+#include <assert.h>
 
 #include "cb.h"
 
@@ -535,6 +536,46 @@ void op_jmp() {
 
 }
 
+void op_jmps() {
+  uint8_t tmp_h;
+  uint8_t tmp_l;
+/*
+  uint8_t cond_mask = 
+      (((IS&SF)^(CF)) << 2)
+    | ((ZF)           << 1)
+    | (((IS&SF)^(NF)))
+  ;
+*/
+
+  //printf("IS : %d\nSF: %d\nCF: %d\nZF: %d\n", IS, SF, CF, ZF);
+
+  uint8_t f1 = ( (IS&SF) | (CF) );
+  uint8_t f2 = ZF;
+
+  uint8_t cond_mask = 
+      ((f1)        << 2)
+    | ((f2)        << 1)
+    | (~(f1|f2)&0x01)
+  ;
+
+
+  //printf("cond mask: 0x%02X\n", cond_mask);
+  //printf("arg  mask: 0x%02X\n", (ARG&0x7));
+
+  inc16(r.s);
+  tmp_l = mem_read(val16(r.s));
+  inc16(r.s);
+  tmp_h = mem_read(val16(r.s));
+
+
+
+  if(cond_mask & (ARG&0x7)) {
+    low(r.p) = tmp_l;
+    high(r.p) = tmp_h;
+  }
+
+}
+
 void op_ret() {
   inc16(r.s);
   low(r.p) = mem_read(val16(r.s));
@@ -672,7 +713,7 @@ void op_get_rel_sp_w() {
 void (*ops[])(void) = {
   /*sect 00*/
 op_nop,   op_seta,  op_puta,  op_lit, op_litw,  op_push,  op_pop,   op_pushw,
-op_popw,  op_alu,   op_cmp,   op_jmp, op_err ,  op_ret,   op_call,  op_ext,  
+op_popw,  op_alu,   op_cmp,   op_jmp, op_jmps,  op_ret,   op_call,  op_ext,  
 
   /*sect 01*/
 op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,

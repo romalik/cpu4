@@ -4,6 +4,14 @@ extern int n_spill;
 extern int maxoffset;
 extern int current_func_retsize;
 
+void push(char *arg);
+void pushw(char *arg);
+void pop(char *arg);
+void popw(char *arg);
+
+
+
+
 #define get_spill_sp_offset(X) (current_sp_offset + 1 + (X))
 #define get_local_sp_offset(X) (current_sp_offset + n_spill + 1 + (X))
 #define get_arg_sp_offset(X) (current_sp_offset + n_spill + maxoffset + 2 + current_func_retsize + 1 + (X))

@@ -205,6 +205,32 @@ char *get16memreg(unsigned char reg)
 	return reg16memnames[reg];
 }
 
+void push(char *arg)
+{
+	print("push %s\n", arg);
+	current_sp_offset++;
+	print("; sp +%d\n", current_sp_offset);
+}
+void pushw(char *arg)
+{
+	print("pushw %s\n", arg);
+	current_sp_offset += 2;
+	print("; sp +%d\n", current_sp_offset);
+}
+void pop(char *arg)
+{
+	print("pop %s\n", arg);
+	current_sp_offset--;
+	print("; sp +%d\n", current_sp_offset);
+}
+void popw(char *arg)
+{
+	print("popw %s\n", arg);
+	current_sp_offset -= 2;
+	print("; sp +%d\n", current_sp_offset);
+}
+
+
 
 void offset_sp(int off)
 {
@@ -294,30 +320,30 @@ struct op_processors {
 
 struct op_processors procs[] = {
 //name	sz:	 	0			 		1			 		2					4
-	{CNST,				{nop,			cnst,			cnst,			cnst}},
+	{CNST,				{nop,			cnst,			cnst,			nop}},
 	{ADDRG, 				{nop,			nop,			addrg,		nop}},
 	{ADDRF,				{nop,			nop,			addrf,		nop}},
 	{ADDRL,				{nop,			nop,			addrl,		nop}},
 	{LABEL,				{label,		nop,			nop,			nop}},
-	{CVF,					{nop,			cv,			cv,			nop}},
-	{CVI,					{nop,			cv,			cv,			nop}},
-	{CVP,					{nop,			cv,			cv,			nop}},
-	{CVU,					{nop,			cv,			cv,			nop}},
-	{ARG, 				{nop,			nop,			nop,			nop}},
-	{BCOM, 				{nop,			nop,			nop,			nop}},
-	{NEG, 				{nop,			nop,			nop,			nop}},
-	{INDIR, 				{nop,			nop,			nop,			nop}},
-	{JUMP, 				{nop,			nop,			nop,			nop}},
-	{RET,					{nop,			nop,			nop,			nop}},
-	{CALL,				{nop,			nop,			nop,			nop}},
-	{ASGN, 				{nop,			nop,			nop,			nop}},
-	{BOR, 				{nop,			alu_1,		alu_2,		nop}},
-	{BAND, 				{nop,			alu_1,		alu_2,		nop}},
-	{BXOR, 				{nop,			alu_1,		alu_2,		nop}},
+	{CVF,					{nop,			cv,				cv,			nop}},
+	{CVI,					{nop,			cv,				cv,			nop}},
+	{CVP,					{nop,			cv,				cv,			nop}},
+	{CVU,					{nop,			cv,				cv,			nop}},
+	{ARG, 				{nop,			arg,			arg,			nop}},
+	{BCOM, 				{nop,			alu_unary,alu_unary,			nop}},
+	{NEG, 				{nop,			alu_unary,alu_unary,			nop}},
+	{INDIR, 				{nop,		indir,		indir,			nop}},
+	{JUMP, 				{jmp,			nop,			jmp,			nop}},
+	{RET,					{ret,			ret,			ret,			nop}},
+	{CALL,				{call_op,	call_op,	call_op,	nop}},
+	{ASGN, 				{nop,			asgn_op,	asgn_op,	nop}},
+	{BOR, 				{nop,			alu,		alu,		nop}},
+	{BAND, 				{nop,			alu,		alu,		nop}},
+	{BXOR, 				{nop,			alu,		alu,		nop}},
 	{RSH, 				{nop,			nop,			nop,			nop}},
 	{LSH,					{nop,			nop,			nop,			nop}},
-	{ADD, 				{nop,			alu_1,		alu_2,		nop}},
-	{SUB, 				{nop,			alu_1,		alu_2,		nop}},
+	{ADD, 				{nop,			alu,		alu,		nop}},
+	{SUB, 				{nop,			alu,		alu,		nop}},
 	{DIV, 				{nop,			nop,			nop,			nop}},
 	{MUL, 				{nop,			nop,			nop,			nop}},
 	{MOD,					{nop,			nop,			nop,			nop}},
@@ -420,7 +446,7 @@ static void dumptree_dbg(Node p)
 	return;
 
 }
-static void dumptree(Node p)
+void dumptree(Node p)
 {
 	int i;
 	char * target_type;
@@ -432,6 +458,14 @@ static void dumptree(Node p)
 
 	ident += 3;
 
+	if(generic(p->op) == CALL) {
+		for (i = 0; i < 15; i++) {
+			assert(p->args);
+			if (!p->args[i])
+				break;
+			dumptree(p->args[i]);
+		}
+	}
 
 	
 	if (p->kids[0])
