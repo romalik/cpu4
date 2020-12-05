@@ -193,6 +193,7 @@ int alloc_spill() {
 	for(i = 0; i<spill_mask_size; i++) {
 		if(spill_mask[i] == 0) { 
 			spill_mask[i] = 1;
+			print("<alloc spill %d>\n", i);
 			return i;
 		}
 	}
@@ -203,6 +204,7 @@ int alloc_spill() {
 void free_spill(int i) {
 	assert(i<spill_mask_size);
 	spill_mask[i] = 0;
+	print("<free spill %d>\n", i);
 
 }
 
@@ -569,20 +571,21 @@ static void gen_node(Node p, int * depth, unsigned int target)
 	int kid_0_result_preserved = 0;
 	int kid_1_result_preserved = 0;
 
+	//if(p->generated) return;
+
 	//calculate_depth
 	if (p)
 	{
-		//for(i = 0; i<ident; i++) print(" ");
-		//print("gen %s count %d\n", opname(p->op), p->count);
-		//ident+=3;
+		ident+=3;
 		n_kids = ((p->kids[0])?1:0) + ((p->kids[1])?1:0);
 
 		if(p->kids[0]) {
+			if(p->kids[0]->count > 1) {
+				
+				kid_0_result_preserved = 1;
+			}
+
 			if(!p->kids[0]->generated) {
-				if(p->kids[0]->count > 1) {
-					
-					kid_0_result_preserved = 1;
-				}
 				//put result to spill in second kid present, or if intermediate to be used later
 				if(n_kids > 1 || kid_0_result_preserved) {
 					target_kid_0 = create_spill_target(alloc_spill());
@@ -590,10 +593,17 @@ static void gen_node(Node p, int * depth, unsigned int target)
 					target_kid_0 = create_reg_target(0);
 				}
 				gen_node(p->kids[0], &d, target_kid_0);
+			} else {
+				target_kid_0 = p->kids[0]->target;
+				for(i = 0; i<ident; i++) print(" "); printf("(-) kid0 [%p] %s preserved in 0x%04x\n", p->kids[0], opname(p->kids[0]->op), target_kid_0);
 			}
 		}
 
 		if(p->kids[1]) {
+			if(p->kids[1]->count > 1) {
+				kid_1_result_preserved = 1;
+			}
+
 			if(!p->kids[1]->generated) {
 				if(p->kids[1]->count > 1) {
 					kid_1_result_preserved = 1;
@@ -605,10 +615,13 @@ static void gen_node(Node p, int * depth, unsigned int target)
 					target_kid_1 = create_reg_target(1);
 				}
 				gen_node(p->kids[1], &d, target_kid_1);
+			} else {
+				target_kid_1 = p->kids[1]->target;
+				for(i = 0; i<ident; i++) print(" "); printf("(-) kid1 [%p] %s preserved in 0x%04x\n", p->kids[1], opname(p->kids[1]->op), target_kid_1);
 			}
 		}
 
-		//ident-=3;
+		ident-=3;
 		if(is_target_spill(target_kid_0)) {
 			if(!kid_0_result_preserved) {
 				free_spill(get_target(target_kid_0));
@@ -651,11 +664,27 @@ static void gen_node(Node p, int * depth, unsigned int target)
 		p->generated = 1;
 		p->depth = d;
 		*depth += d;
+
+		for(i = 0; i<ident; i++) print(" ");
+		printf("%s [%p] count %d kid0: 0x%04x %s kid1: 0x%04x %s target: 0x%04x\n", 
+		  opname(p->op), p, p->count, p->kids[0]?p->kids[0]->target:0, kid_0_result_preserved?"[preserved]":"", p->kids[1]?p->kids[1]->target:0, kid_0_result_preserved?"[preserved]":"", target);
+
+		if(ident == 0) printf("\n\n");
+
+
 	}
 }
 
 static void gen_root(Node p) {
 	int depth = 0;
+	if(p->count) {
+		if ((generic(p->op) == CALL) || (generic(p->op) == ARG)){
+			return;
+		} else {
+			printf("gen: Deleted something from tree: %s\n",opname(p->op));
+			return;
+		}
+	}
 	gen_node(p, &depth,create_no_target());
 }
 
