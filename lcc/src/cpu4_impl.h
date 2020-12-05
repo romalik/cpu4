@@ -16,8 +16,6 @@ void label(Node);
 
 void cv(Node);
 
-void nop(Node);
-
 void arg(Node);
 
 void indir(Node);
@@ -35,3 +33,7 @@ void cond_br(Node);
 void shl(Node);
 
 void shr(Node);
+
+void intr_fn(Node);
+
+void nop(Node);

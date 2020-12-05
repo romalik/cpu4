@@ -4,6 +4,7 @@
 
 static char rcsid[] = "$Id: bytecode.c,v 1.1 2002/08/28 23:12:41 drh Exp $";
 
+int n_spill = 0;
 int current_sp_offset = 0;
 int current_func_retsize = 0;
 int last_emitted =0;
@@ -151,59 +152,6 @@ static void I(defsymbol)(Symbol p)
 		p->x.name = p->name;
 }
 
-int n_spill = 0;
-
-#define no_reg 0xff
-
-static char *reg16names[] = {
-		"x", "y",
-		"so" //inaccessible
-};
-static char *reg16memnames[] = {
-		"m[x]", "m[y]",
-		"m[so]"};
-static char *reg8names[] = {
-		"xl", "xh", "yl", "yh",
-		"sol", "soh" //inaccessible
-};
-
-
-static char *no_reg_name = "no_reg";
-
-char *get8name(unsigned char reg)
-{
-	if (reg == no_reg)
-		return no_reg_name;
-	return reg8names[reg];
-}
-
-char *get16name(unsigned char reg)
-{
-	if (reg == no_reg)
-		return no_reg_name;
-	return reg16names[reg];
-}
-
-char *get16name_low(unsigned char reg)
-{
-	if (reg == no_reg)
-		return no_reg_name;
-	return reg8names[reg * 2];
-}
-
-char *get16name_high(unsigned char reg)
-{
-	if (reg == no_reg)
-		return no_reg_name;
-	return reg8names[reg * 2 + 1];
-}
-
-char *get16memreg(unsigned char reg)
-{
-	if (reg == no_reg)
-		return no_reg_name;
-	return reg16memnames[reg];
-}
 
 void push(char *arg)
 {
@@ -228,36 +176,6 @@ void popw(char *arg)
 	print("popw %s\n", arg);
 	current_sp_offset -= 2;
 	print("; sp +%d\n", current_sp_offset);
-}
-
-
-
-void offset_sp(int off)
-{
-	if(off >= 0) {
-		print("; offset sp by %d\n", off);
-		print("seta sl\n");
-		print("lit b %d\n", off);
-		print("alu add\n");
-		print("puta sl\n");
-		print("seta sh\n");
-		print("lit b 0\n");
-		print("alu adc\n");
-		print("puta sh\n");
-		print("; offset end\n");
-	} else {
-		print("; offset sp by %d\n", off);
-		print("seta sl\n");
-		print("lit b %d\n", -off);
-		print("alu sub\n");
-		print("puta sl\n");
-		print("seta sh\n");
-		print("lit b 0\n");
-		print("alu sbc\n");
-		print("puta sh\n");
-		print("; offset end\n");
-
-	}
 }
 
 
@@ -319,40 +237,40 @@ struct op_processors {
 
 
 struct op_processors procs[] = {
-//name	sz:	 	0			 		1			 		2					4
-	{CNST,				{nop,			cnst,			cnst,			nop}},
-	{ADDRG, 				{nop,			nop,			addrg,		nop}},
-	{ADDRF,				{nop,			nop,			addrf,		nop}},
-	{ADDRL,				{nop,			nop,			addrl,		nop}},
-	{LABEL,				{label,		nop,			nop,			nop}},
-	{CVF,					{nop,			cv,				cv,			nop}},
-	{CVI,					{nop,			cv,				cv,			nop}},
-	{CVP,					{nop,			cv,				cv,			nop}},
-	{CVU,					{nop,			cv,				cv,			nop}},
-	{ARG, 				{nop,			arg,			arg,			nop}},
-	{BCOM, 				{nop,			alu_unary,alu_unary,			nop}},
-	{NEG, 				{nop,			alu_unary,alu_unary,			nop}},
-	{INDIR, 				{nop,		indir,		indir,			nop}},
-	{JUMP, 				{jmp,			nop,			jmp,			nop}},
-	{RET,					{ret,			ret,			ret,			nop}},
-	{CALL,				{call_op,	call_op,	call_op,	nop}},
-	{ASGN, 				{nop,			asgn_op,	asgn_op,	nop}},
-	{BOR, 				{nop,			alu,		alu,		nop}},
-	{BAND, 				{nop,			alu,		alu,		nop}},
-	{BXOR, 				{nop,			alu,		alu,		nop}},
-	{RSH, 				{nop,			shr,		shr,		nop}},
-	{LSH,					{nop,			shl,		shl,		nop}},
-	{ADD, 				{nop,			alu,		alu,		nop}},
-	{SUB, 				{nop,			alu,		alu,		nop}},
-	{DIV, 				{nop,			nop,			nop,			nop}},
-	{MUL, 				{nop,			nop,			nop,			nop}},
-	{MOD,					{nop,			nop,			nop,			nop}},
-	{EQ, 					{nop,			cond_br,		cond_br,		nop}},
-	{NE, 					{nop,			cond_br,		cond_br,		nop}},
-	{GT, 					{nop,			cond_br,		cond_br,		nop}},
-	{GE, 					{nop,			cond_br,		cond_br,		nop}},
-	{LE, 					{nop,			cond_br,		cond_br,		nop}},
-	{LT,				  	{nop,			cond_br,		cond_br,		nop}},
+//name	sz:	 		0			 				1			 			2						4
+	{CNST,				{intr_fn,			cnst,				cnst,				intr_fn}},
+	{ADDRG, 			{intr_fn,			intr_fn,		addrg,			intr_fn}},
+	{ADDRF,				{intr_fn,			intr_fn,		addrf,			intr_fn}},
+	{ADDRL,				{intr_fn,			intr_fn,		addrl,			intr_fn}},
+	{LABEL,				{label,				intr_fn,		intr_fn,		intr_fn}},
+	{CVF,					{intr_fn,			cv,					cv,					intr_fn}},
+	{CVI,					{intr_fn,			cv,					cv,					intr_fn}},
+	{CVP,					{intr_fn,			cv,					cv,					intr_fn}},
+	{CVU,					{intr_fn,			cv,					cv,					intr_fn}},
+	{ARG, 				{intr_fn,			arg,				arg,				intr_fn}},
+	{BCOM, 				{intr_fn,			alu_unary,	alu_unary,	intr_fn}},
+	{NEG, 				{intr_fn,			alu_unary,	alu_unary,	intr_fn}},
+	{INDIR, 			{intr_fn,			indir,			indir,			intr_fn}},
+	{JUMP, 				{jmp,					intr_fn,		jmp,				intr_fn}},
+	{RET,					{ret,					ret,				ret,				intr_fn}},
+	{CALL,				{call_op,			call_op,		call_op,		intr_fn}},
+	{ASGN, 				{intr_fn,			asgn_op,		asgn_op,		intr_fn}},
+	{BOR, 				{intr_fn,			alu,				alu,				intr_fn}},
+	{BAND, 				{intr_fn,			alu,				alu,				intr_fn}},
+	{BXOR, 				{intr_fn,			alu,				alu,				intr_fn}},
+	{RSH, 				{intr_fn,			shr,				shr,				intr_fn}},
+	{LSH,					{intr_fn,			shl,				shl,				intr_fn}},
+	{ADD, 				{intr_fn,			alu,				alu,				intr_fn}},
+	{SUB, 				{intr_fn,			alu,				alu,				intr_fn}},
+	{DIV, 				{intr_fn,			intr_fn,		intr_fn,		intr_fn}},
+	{MUL, 				{intr_fn,			intr_fn,		intr_fn,		intr_fn}},
+	{MOD,					{intr_fn,			intr_fn,		intr_fn,		intr_fn}},
+	{EQ, 					{intr_fn,			cond_br,		cond_br,		intr_fn}},
+	{NE, 					{intr_fn,			cond_br,		cond_br,		intr_fn}},
+	{GT, 					{intr_fn,			cond_br,		cond_br,		intr_fn}},
+	{GE, 					{intr_fn,			cond_br,		cond_br,		intr_fn}},
+	{LE, 					{intr_fn,			cond_br,		cond_br,		intr_fn}},
+	{LT,				  {intr_fn,			cond_br,		cond_br,		intr_fn}},
 
 	0, {0,0,0,0}
 };
@@ -586,6 +504,10 @@ static void I(function)(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	print("; n_spill = %d\n", n_spill);
 	
 	//offset_sp(-(maxoffset + n_spill));
+
+	print("adjust_sp s %d\n", -(maxoffset + n_spill*2));
+
+/*
    print("; create instruction for this !\n");
 	print("lit off %d\n", -(maxoffset + n_spill*2));
 	print("seta sol\n");
@@ -593,11 +515,17 @@ static void I(function)(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
    print("puta sl\n");
    print("putb sh\n");
    print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
+*/
+
 
 	emitcode();
 
 	print("; end function %s\n", f->x.name);
 	if(last_emitted != RET) {
+
+		print("adjust_sp s %d\n", get_retaddr_sp_offset()-1);
+
+/*
 	  	print("; create instruction for this !\n");
 		print("lit off %d\n", get_retaddr_sp_offset()-1);
 		print("seta sol\n");
@@ -605,6 +533,7 @@ static void I(function)(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
   		print("puta sl\n");
  	 	print("putb sh\n");
   		print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
+*/
 		print("ret\n");
 	}
 }

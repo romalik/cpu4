@@ -19,8 +19,14 @@ char * cmds[] = {"test1", "test2"};
 int get_cmd_idx(char * s) {
    int i = 0;
    for(i = 0; i<N_CMDS; i++) {
+      puts("comparing ");
+      puts(cmds[i]);
+      puts("\n");
       if(!strcmp(cmds[i], s)) {
+         puts("Success at "); printhex(i); puts("\n");
          return i;
+      } else {
+         puts("Fail at "); printhex(i); puts("\n");
       }
    }
    return -1;
@@ -49,6 +55,8 @@ void getline() {
 
 }
 
+char * aaa = "blah blah\n";
+
 char buffer[30];
 
 int main() {
@@ -57,15 +65,13 @@ int main() {
    int a;
    int b = 5;
 
-   printhex(0x1234);
-   putc('\n');
+   puts(aaa);
 
-   for(a = 15; a > 0; a--) {
-      for(b = 0; b<a; b++) {
-         putc('*');
-      }
-      putc('\n');
+   puts("Commands:\n");
+   for(a = 0; a < N_CMDS; a++) {
+      printhex(a); puts(": "); puts(cmds[a]); puts("\n");
    }
+
 
    while(1) {
       puts("> ");
@@ -76,7 +82,6 @@ int main() {
 
       if(!strcmp(in_str, "test")) {
          puts(">> Test successful\n");
-         funcs[1]();
       }
 
       cmd_idx = get_cmd_idx(in_str);

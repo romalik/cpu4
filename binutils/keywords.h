@@ -112,7 +112,7 @@ char * opcodes_3[16] = {
   "s++",   /* 4 2 */
   "s--",   /* 5 0 */
   "calls",   /* 6 0 */
-  "nop",   /* 7 0 */
+  "adjust_sp",   /* 7 0 */
   "put_rel_sp",   /* 8 1 */
   "get_rel_sp",   /* 9 1 */
   "put_rel_sp_w",   /* 10 1*/

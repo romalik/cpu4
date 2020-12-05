@@ -173,6 +173,7 @@ void gen_instruction() {
         opcode |= arg_id;
         emit(opcode);
         return;
+      case 7:  //adjust sp
       case 10: //put_rel_sp_w
       case 11: //get_rel_sp_w
         expect_args = 1;
@@ -201,7 +202,6 @@ void gen_instruction() {
         opcode |= arg_id;
         emit(opcode);
         return;
-
       case 14:
       //info
         emit(keyword_id << 4);

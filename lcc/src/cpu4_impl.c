@@ -180,19 +180,46 @@ void addrg(Node p) {
 }
 
 void addrl(Node p) {
+  
+  char * target_reg = get_target_reg_name(p, 0);
+  if(target_reg) {
+    target_reg[1] = 0;
+  	print("adjust_sp %s %d\n", target_reg, get_local_sp_offset(atoi(p->syms[0]->x.name)));
+  } else {
+  	print("adjust_sp a %d\n", get_local_sp_offset(atoi(p->syms[0]->x.name)));
+  	put_reg8_to_target(p, "a", 0);
+  	put_reg8_to_target(p, "b", 1);
+
+  }
+
+/*
 	print("lit off %d\n", get_local_sp_offset(atoi(p->syms[0]->x.name)));
 	print("seta sol\n");
 	put_reg8_to_target(p, "a", 0);
 	print("seta soh\n");
 	put_reg8_to_target(p, "a", 1);
+*/
 }
 
 void addrf(Node p) {
+  char * target_reg = get_target_reg_name(p, 0);
+  if(target_reg) {
+    target_reg[1] = 0;
+  	print("adjust_sp %s %d\n", target_reg, get_arg_sp_offset(atoi(p->syms[0]->x.name)));
+  } else {
+  	print("adjust_sp a %d\n", get_arg_sp_offset(atoi(p->syms[0]->x.name)));
+  	put_reg8_to_target(p, "a", 0);
+  	put_reg8_to_target(p, "b", 1);
+
+  }
+
+/*
 	print("lit off %d\n", get_arg_sp_offset(atoi(p->syms[0]->x.name)));
 	print("seta sol\n");
 	put_reg8_to_target(p, "a", 0);
 	print("seta soh\n");
 	put_reg8_to_target(p, "a", 1);
+*/
 }
 
 void label(Node p) {
@@ -338,6 +365,8 @@ void ret(Node p) {
     not_implemented()
   }
 
+	print("adjust_sp s %d\n", get_retaddr_sp_offset()-1);
+/*
   print("; create instruction for this !\n");
 	print("lit off %d\n", get_retaddr_sp_offset()-1);
 	print("seta sol\n");
@@ -345,6 +374,7 @@ void ret(Node p) {
   print("puta sl\n");
   print("putb sh\n");
   print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
+*/
   print("ret\n");
 }
 
@@ -406,6 +436,8 @@ void call_op(Node p) {
     }
   }
 
+	print("adjust_sp s %d\n", total_arg_size);
+/*
   print("; create instruction for this !\n");
 	print("lit off %d\n", total_arg_size);
 	print("seta sol\n");
@@ -413,6 +445,7 @@ void call_op(Node p) {
   print("puta sl\n");
   print("putb sh\n");
   print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
+*/
   current_sp_offset -= total_arg_size;
 }
 
@@ -615,6 +648,97 @@ void shr(Node p) {
 
   }
 }
+
+
+void intr_fn(Node p) {
+  int i;
+  int args_sz = 0;
+  char * reg_name_target;
+  if(opsize(p->op) == 1) {
+    if(p->kids[0]) {
+      if(is_target_spill(p->kids[0]->target)) {
+        put_kid_to_reg8(p, 0, "xl", 0);        
+      }
+      push("xl");
+      args_sz++;
+    }
+    if(p->kids[1]) {
+      if(is_target_spill(p->kids[1]->target)) {
+        put_kid_to_reg8(p, 0, "yl", 0);        
+      }
+      push("yl");
+      args_sz++;
+    }
+  } else if(opsize(p->op) == 2) {
+    if(p->kids[0]) {
+      if(is_target_spill(p->kids[0]->target)) {
+        put_kid_to_reg8(p, 0, "xl", 0);        
+        put_kid_to_reg8(p, 0, "xh", 1);        
+      }
+      pushw("x");
+      args_sz+=2;
+    }
+    if(p->kids[1]) {
+      if(is_target_spill(p->kids[1]->target)) {
+        put_kid_to_reg8(p, 0, "yl", 0);        
+        put_kid_to_reg8(p, 0, "yh", 1);        
+      }
+      pushw("y");
+      args_sz+=2;
+    }
+  }
+
+  print("; reserve retval\n");
+  for(i = 0; i<(opsize(p->op)); i++) {
+    print("s--\n");
+    current_sp_offset++;
+  }
+
+
+  print("call $%s\n", opname(p->op));
+
+  reg_name_target = get_target_reg_name(p, 0);
+
+  if(reg_name_target) {
+    if(opsize(p->op) == 0) {
+    } else if(opsize(p->op) == 1) {
+      pop(reg_name_target);
+    } else if(opsize(p->op) == 2) {
+      reg_name_target[1] = 0;
+      popw(reg_name_target);
+    } else {
+      not_implemented()
+    }
+  } else {
+    if(opsize(p->op) == 0) {
+    } else if(opsize(p->op) == 1) {
+      pop("a");
+      put_reg8_to_target(p, "a", 0);
+    } else if(opsize(p->op) == 2) {
+      popw("a");
+      put_reg8_to_target(p, "a", 0);
+      put_reg8_to_target(p, "b", 1);
+    } else {
+      not_implemented()
+    }
+  }
+
+/*
+  print("; create instruction for this !\n");
+	print("lit off %d\n", args_sz);
+	print("seta sol\n");
+  print("setb soh\n");
+  print("puta sl\n");
+  print("putb sh\n");
+  print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
+*/
+
+	print("adjust_sp s %d\n", args_sz);
+
+  current_sp_offset -= args_sz;
+
+}
+
 
 void nop(Node p) {
   fprintf(stderr, "Not implemented %s\n", opname(p->op));

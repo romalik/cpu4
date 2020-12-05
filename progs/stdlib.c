@@ -65,6 +65,7 @@ void printhex(unsigned int n) {
 			*s = n_rem + '0';
 		}
 		n = n >> 4;
+		s--;
 	}
 	*s = 'x';
 	s--;

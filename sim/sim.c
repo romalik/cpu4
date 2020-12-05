@@ -733,6 +733,31 @@ void op_get_rel_sp_w() {
   r.sect = 0;
 }
 
+void op_adjust_sp() {
+/*
+adjust_sp X:
+
+lit off X
+seta(tmpl) sol
+setb(tmph) soh
+puta sl
+putb sh
+*/
+  uint8_t tmp_l;
+  uint8_t tmp_h;
+
+  r.off = mem_read(val16(r.p));
+  inc16(r.p);
+  
+  tmp_l = sel_get_value(8);
+  tmp_h = sel_get_value(9);
+
+  sel_set_value(ARG,tmp_l);
+  sel_set_value(ARG|1,tmp_h);
+  r.sect = 0;
+
+}
+
 void (*ops[])(void) = {
   /*sect 00*/
 op_nop,   op_seta,  op_puta,  op_lit, op_litw,  op_push,  op_pop,   op_pushw,
@@ -747,7 +772,7 @@ op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 
   /*sect 11*/
-op_x_pp,   op_x_mm,   op_y_pp,  op_y_mm,  op_s_pp,  op_s_mm,  op_calls,    op_err,
+op_x_pp,   op_x_mm,   op_y_pp,  op_y_mm,  op_s_pp,  op_s_mm,  op_calls,    op_adjust_sp,
 op_put_rel_sp,    op_get_rel_sp,    op_put_rel_sp_w,   op_get_rel_sp_w,   op_setb,   op_putb,   op_sim_info, op_sim_halt,
 
 };
@@ -766,7 +791,7 @@ char * ops_text[] = {
 "op_err",   "op_err",   "op_err",   "op_err", "op_err",   "op_err",   "op_err",   "op_err",
 
   /*sect 11*/ 
-"op_x_pp",   "op_x_mm",   "op_y_pp",  "op_y_mm",  "op_s_pp",  "op_s_mm",  "op_calls",      "op_err",
+"op_x_pp",   "op_x_mm",   "op_y_pp",  "op_y_mm",  "op_s_pp",  "op_s_mm",  "op_calls",      "op_adjust_sp",
 "op_put_rel_sp",    "op_get_rel_sp",    "op_put_erl_sp_w",   "op_get_rel_sp_w",   "op_setb",   "op_putb",   "op_sim_info", "op_sim_halt",
 
 };
