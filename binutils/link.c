@@ -196,12 +196,11 @@ int main(int argc, char ** argv) {
 
 /*
   printf("off:\n");
-*/
   for(i = 0; i<loaded_files; i++) {
     printf("file %d:\n", i);
     print_labels(label_vecs[i]);
   }
-
+*/
   linker_link();
 
 

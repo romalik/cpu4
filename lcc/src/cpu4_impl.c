@@ -573,7 +573,7 @@ void shl(Node p) {
     } else {
       print("seta xl\n");
     }
-  	print("alu shl\n"); break;
+  	print("alu shl\n");
     
 
     if(i == n-1) {
@@ -589,7 +589,7 @@ void shl(Node p) {
         print("seta xh\n");
       }
 
-      print("alu shlc\n"); break;
+      print("alu shlc\n");
 
       if(i == n-1) {
         put_reg8_to_target(p, "a", 1);
