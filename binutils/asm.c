@@ -10,6 +10,8 @@
 #include "keywords.h"
 #include "robj.h"
 
+#include <assert.h>
+
 #define panic(msg) panic_full((msg), __FILE__, __LINE__, current_line, token)
 
 uint16_t current_pos = 0;
@@ -24,12 +26,17 @@ void emit(uint8_t opcode) {
   current_pos++;
 }
 
-char expect_args = 0;
+char expect_arg_n = 0;
+char expect_arg_size = 0;
 
 void gen_instruction() {
   char keyword_id;
   char arg_id;
   uint8_t opcode = 0;
+
+  expect_arg_n = 0;
+  expect_arg_size = 0;
+
   keyword_id = find_keyword(opcodes_0, token);
   if(keyword_id < 16) {
     opcode = keyword_id << 4;
@@ -41,7 +48,8 @@ void gen_instruction() {
         break;
       //litw
       case 4:
-        expect_args = 2;
+        expect_arg_size = 2;
+        expect_arg_n = 1;
         get_next_token();
         if(eof_hit) {
           panic("Unexpected EOF");
@@ -55,7 +63,9 @@ void gen_instruction() {
         return;
       case 3:
         //expect 1 byte arg
-        expect_args++;
+        expect_arg_size = 1;
+        expect_arg_n = 1;
+
       case 1:
       case 2:
       case 5:
@@ -90,11 +100,14 @@ void gen_instruction() {
       case 14:
         //call
         emit(opcode);
-        expect_args = 2;
+        expect_arg_size = 2;
+        expect_arg_n = 1;
+
         return;
       case 11:
         //jmp, expect adr
-        expect_args = 2;
+        expect_arg_size = 2;
+        expect_arg_n = 1;
       case 12:
         //jmps
         // populate condition bits 
@@ -157,6 +170,53 @@ void gen_instruction() {
     return;
   }
 
+
+
+
+
+//section 2
+  
+  keyword_id = find_keyword(opcodes_2, token);
+  if(keyword_id < 16) {
+    arg_id = 2;
+    opcode = (15 << 4) | arg_id;
+    emit(opcode);
+
+    opcode = (keyword_id << 4);
+    switch(keyword_id) {
+      case 0: //alus1
+      case 1: //alus2
+      case 2: //alus3
+
+        get_next_token();
+        if(eof_hit) {
+          panic("Unexpected EOF");
+        }
+        arg_id = find_keyword(alu_args, token);
+        if(arg_id > 15) {
+          panic("Bad argument");
+        }
+        opcode |= arg_id;
+        emit(opcode);
+
+        expect_arg_n = keyword_id + 1;
+        expect_arg_size = 1;
+
+        return;
+
+      default:      
+        emit(keyword_id << 4);
+        break;
+    }
+    return;
+  }
+
+
+
+
+
+//section 3
+  
   keyword_id = find_keyword(opcodes_3, token);
   if(keyword_id < 16) {
     arg_id = 3;
@@ -167,7 +227,9 @@ void gen_instruction() {
     switch(keyword_id) {
       case 8: //put_rel_sp
       case 9: //get_rel_sp
-        expect_args = 1;
+        expect_arg_size = 1;
+        expect_arg_n = 1;
+
         get_next_token();
         if(eof_hit) {
           panic("Unexpected EOF");
@@ -182,7 +244,8 @@ void gen_instruction() {
       case 7:  //adjust sp
       case 10: //put_rel_sp_w
       case 11: //get_rel_sp_w
-        expect_args = 1;
+        expect_arg_size = 1;
+        expect_arg_n = 1;
         get_next_token();
         if(eof_hit) {
           panic("Unexpected EOF");
@@ -211,7 +274,9 @@ void gen_instruction() {
       case 14:
       //info
         emit(keyword_id << 4);
-        expect_args = 1;
+        expect_arg_size = 1;
+        expect_arg_n = 1;
+
         break;
       case 15:
       //halt
@@ -247,15 +312,19 @@ void assemble() {
     } else if(token[0] == '.') {
       //directive
 
-      if(expect_args) panic("Arguments expected");
+      if(expect_arg_n) panic("Arguments expected");
 
       if(!strcmp(&token[1], "org")) {
         get_next_token();
         current_pos = strtol(token,0,0);
       } else if(!strcmp(&token[1], "byte")) {
-        expect_args = 1;
+        expect_arg_size = 1;
+        expect_arg_n = 1;
+
       } else if(!strcmp(&token[1], "word")) {
-        expect_args = 2;
+        expect_arg_size = 2;
+        expect_arg_n = 1;
+
       } else if(!strcmp(&token[1], "ascii")) {
         int c;
         while((c = get_quoted_text()) >= 0) {
@@ -273,44 +342,49 @@ void assemble() {
       //label
       uint16_t label_id;
       label_id = mark_label_use(&token[1], current_pos);
+
+      assert(expect_arg_size == 2);
+
       emit(low(label_id));
       emit(high(label_id));
-      expect_args = 0;
+      expect_arg_size = 0;
+      expect_arg_n--;
 
     } else if(token[0] == '\'') {
       //literal char
+ 
       emit(token[1]);
-      if(expect_args > 1) {
+      if(expect_arg_size > 1) {
         emit(0);
       }
-      if(!expect_args) {
+      if(!expect_arg_size) {
         panic("Unexpected literal char!");
       }
-      expect_args = 0;
+      expect_arg_n--;
     } else if((token[0] >= '0' && token[0] <= '9') || token[0] == '-') {
       //literal
       word_literal = strtol(token,0,0);
-      if(expect_args == 2) {
+      if(expect_arg_size == 2) {
         emit(low(word_literal));
         emit(high(word_literal));
       }
-      if(expect_args == 1) {
+      if(expect_arg_size == 1) {
         emit(low(word_literal));
       }
-      if(!expect_args) {
+      if(!expect_arg_size) {
         panic("Unexpected literal!");
       }
-      expect_args = 0;
+      expect_arg_n--;
     
     } else  {
-      if(expect_args) {
+      if(expect_arg_n) {
         panic("Arguments expected");
       }
       gen_instruction();
     }
 
   }
-  if(expect_args) {
+  if(expect_arg_n) {
     panic("Hit eof expecting args");
   }
 

@@ -500,6 +500,59 @@ void op_popw() {
 void op_alu() {
   aluop(&r.a, &r.f);
 }
+void op_alus1() {
+  r.off = mem_read(val16(r.p));
+  inc16(r.p);
+
+  r.a = sel_get_value(11);
+
+  aluop(&r.a, &r.f);
+
+  sel_set_value(11, r.a);
+ 
+  r.sect = 0;
+}
+void op_alus2() {
+  r.off = mem_read(val16(r.p));
+  inc16(r.p);
+
+  r.a = sel_get_value(11);
+
+  r.off = mem_read(val16(r.p));
+  inc16(r.p);
+
+  r.b = sel_get_value(11);
+
+  aluop(&r.a, &r.f);
+
+  sel_set_value(11, r.a);
+
+  r.sect = 0;
+ 
+}
+void op_alus3() {
+
+  r.off = mem_read(val16(r.p));
+  inc16(r.p);
+
+  r.a = sel_get_value(11);
+
+  r.off = mem_read(val16(r.p));
+  inc16(r.p);
+
+  r.b = sel_get_value(11);
+
+  aluop(&r.a, &r.f);
+
+  r.off = mem_read(val16(r.p));
+  inc16(r.p);
+
+  sel_set_value(11, r.a);
+
+  r.sect = 0;
+
+}
+
 void op_cmp() {
   uint8_t dummy;
   aluop(&dummy, &r.f);
@@ -768,7 +821,7 @@ op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 
   /*sect 10*/
-op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
+op_alus1, op_alus2, op_alus3, op_err, op_err,   op_err,   op_err,   op_err,
 op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 
   /*sect 11*/
@@ -787,7 +840,7 @@ char * ops_text[] = {
 "op_err",   "op_err",   "op_err",   "op_err", "op_err",   "op_err",   "op_err",   "op_err",
 
   /*sect 10*/
-"op_err",   "op_err",   "op_err",   "op_err", "op_err",   "op_err",   "op_err",   "op_err",
+"op_alus1", "op_alus2", "op_alus3", "op_err", "op_err",   "op_err",   "op_err",   "op_err",
 "op_err",   "op_err",   "op_err",   "op_err", "op_err",   "op_err",   "op_err",   "op_err",
 
   /*sect 11*/ 

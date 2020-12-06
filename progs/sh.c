@@ -59,17 +59,61 @@ char * aaa = "blah blah\n";
 
 char buffer[30];
 
+extern int __crt_MULI2(int,int);
+
 int main() {
    char c;
    int cmd_idx;
    int a = 3;
    int b = 2;
+   int d = 0;
    char c1 = 5;
    char c2 = 10;
 
    printhex(0x1234);
-   puts("\na*b:\n");
+   a = 3;
+   b = 2;
+   puts("\n0x3*0x2 = 0x6:\n");
    printhex(a * b);
+   puts("\n");
+   a = 0x133;
+   b = 0x24;
+   puts("\n0x133*0x24 = 0x2b2c:\n");
+   printhex(a * b);
+   puts("\n");
+
+   a = 0x112;
+   b = 0x31;
+   puts("\n0x112*0x31 = 0x3472:\n");
+
+   d = __crt_MULI2(a,b);
+
+   printhex(d);
+   puts("\n");
+
+   a = 0x6;
+   b = 0x2;
+   puts("\n0x6/0x2 = 0x3:\n");
+
+   printhex(a/b);
+   puts("\n");
+
+   a = 0x3A43;
+   b = 0x34D;
+   puts("\n0x3a43/0x34d = 0x11:\n");
+
+   printhex(a/b);
+   puts("\n");
+
+   puts("\n0x3a43%0x34d = 0x226:\n");
+
+   printhex(a%b);
+   puts("\n");
+
+   a = 1234;
+   b = 6420;
+   puts("1234+6420 = 7654\n");
+   printnum(a+b);
    puts("\n");
 
    puts("Commands:\n");

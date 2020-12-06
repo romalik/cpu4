@@ -27,22 +27,22 @@ f	1111	M[s]	NOP	ext
 
 
 char * alu_args[16] = {
-  "add",  
-  "sub", 
-  "neg", 
-  "shl", 
-  "shlc", 
-  "inc", 
-  "adc", 
-  "sbc", 
-  "not", 
-  "and", 
-  "or", 
-  "xor", 
-  "zero", 
-  "NOP", 
-  "shr", 
-  "shrc"
+  "add",  //0
+  "sub",  //1
+  "neg",  //2
+  "shl",  //3
+  "shlc", //4
+  "inc",  //5
+  "adc",  //6
+  "sbc",  //7
+  "not",  //8
+  "and",  //9
+  "or",   //a
+  "xor",  //b
+  "zero", //c
+  "NOP",  //d
+  "shr",  //e
+  "shrc"  //f
 
 };
 char * args[16] = {
@@ -56,9 +56,9 @@ char * args[16] = {
   "sh", 
   "sol", 
   "soh", 
-  "off", 
+  "", 
   "m[so]", 
-  "~m[z]", 
+  "", 
   "m[x]", 
   "m[y]", 
   "m[s]"
@@ -104,6 +104,27 @@ char * opcodes_0[16] = {
   "ext"    /* 15 -*/
    
 };
+
+char * opcodes_2[16] = {
+  "alus1",   /* 0 0 */
+  "alus2",   /* 1 0 */
+  "alus3",   /* 2 0 */
+  "nop",   /* 3 1 */
+  "nop",   /* 4 2 */
+  "nop",   /* 5 0 */
+  "nop",   /* 6 0 */
+  "nop",   /* 7 0 */
+  "nop",   /* 8 1 */
+  "nop",   /* 9 1 */
+  "nop",   /* 10 1*/
+  "nop",   /* 11 1*/
+  "nop",   /* 12 0*/
+  "nop",   /* 13 0*/
+  "nop",  /* 14 2*/
+  "nop"   /* 15 -*/
+   
+};
+
 char * opcodes_3[16] = {
   "x++",   /* 0 0 */
   "x--",   /* 1 0 */

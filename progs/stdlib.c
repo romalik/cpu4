@@ -73,31 +73,30 @@ void printhex(unsigned int n) {
 	puts(s);
 }
 
-/*
+
 void printnum(int n) {
 	char neg = 0;
 	char * s = printnum_buffer + 7;
 	char n_rem;
 	*s = 0;
-	s--;
 	if(n == 0) {
-		*s = '0';
 		s--;
+		*s = '0';
 	}
 	if(n < 0) {
 		neg = 1;
 		n = -n;
 	}
 	while(n) {
+		s--;
 		n_rem = n % 10;
 		*s = n_rem + '0';
 		n = n / 10;
 	}
 	if(neg) {
+		s--;
 		*s = '-';
-		s++;
 	}
 	puts(s);
 }
-*/
 

@@ -208,20 +208,20 @@ section code
 ---     00      ****  0001      sl_read tl_write                        #backup sp
 ---     00      ****  0010      s_reset s--                             #set sp to 0xffff
 ---     00      ****  0011      th_read m[s]_write s--                  #push all regs
----     00      ****  0101      tl_read m[s]_write s--                
----     00      ****  0110      a_read m[s]_write s--                
----     00      ****  0111      b_read m[s]_write s--                
----     00      ****  1000      F_read m[s]_write s--                
----     00      ****  1001      xh_read m[s]_write s--                
----     00      ****  1010      xl_read m[s]_write s--                
----     00      ****  1011      ph_read m[s]_write s--                
----     00      ****  1100      pl_read m[s]_write s--                
----     00      ****  1101      yh_read m[s]_write s--                
----     00      ****  1110      yl_read m[s]_write s--                
----     00      ****  1111      zh_read m[s]_write s--                
----     01      ****  0000      zl_read m[s]_write s--                
----     01      ****  0001      off_read m[s]_write s-- p_reset                
----     01      ****  0010      int_vec_read pl_write seq_rst ext_rst                
+---     00      ****  0100      tl_read m[s]_write s--                
+---     00      ****  0101      a_read m[s]_write s--                
+---     00      ****  0110      b_read m[s]_write s--                
+---     00      ****  0111      F_read m[s]_write s--                
+---     00      ****  1000      xh_read m[s]_write s--                
+---     00      ****  1001      xl_read m[s]_write s--                
+---     00      ****  1010      ph_read m[s]_write s--                
+---     00      ****  1011      pl_read m[s]_write s--                
+---     00      ****  1100      yh_read m[s]_write s--                
+---     00      ****  1101      yl_read m[s]_write s--                
+---     00      ****  1110      zh_read m[s]_write s--                
+---     00      ****  1111      zl_read m[s]_write s--                
+---     01      ****  0000      off_read m[s]_write s-- p_reset                
+---     01      ****  0001      int_vec_read pl_write seq_rst ext_rst                
 
 
 
