@@ -695,7 +695,7 @@ void intr_fn(Node p) {
   }
 
 
-  print("call $%s\n", opname(p->op));
+  print("call $__crt_%s\n", opname(p->op));
 
   reg_name_target = get_target_reg_name(p, 0);
 

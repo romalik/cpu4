@@ -323,10 +323,10 @@ void aluop(uint8_t *res, uint8_t *flags) {
       tmp = 0;
       break;
     case 14:
-      tmp = (r.a >> 1) | ((uint16_t)(r.a&0x01) << 8);
+      tmp = (uint16_t)(r.a >> 1) | ((uint16_t)(r.a&0x01) << 8);
       break;
     case 15:
-      tmp = (r.a >> 1) | ((uint16_t)(r.a&0x01) << 8) | ((r.f & 0x01) << 7);
+      tmp = (uint16_t)(r.a >> 1) | ((uint16_t)(r.a&0x01) << 8) | ((r.f & 0x01) << 7);
       break;
     default:
       break;

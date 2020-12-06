@@ -60,7 +60,7 @@ void printhex(unsigned int n) {
 	while(n) {
 		n_rem = n & 0x0f;
 		if(n_rem > 9) {
-			*s = n_rem + 'A';
+			*s = n_rem + 'A' - 10;
 		} else {
 			*s = n_rem + '0';
 		}

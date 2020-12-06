@@ -62,10 +62,15 @@ char buffer[30];
 int main() {
    char c;
    int cmd_idx;
-   int a;
-   int b = 5;
+   int a = 3;
+   int b = 2;
+   char c1 = 5;
+   char c2 = 10;
 
-   puts(aaa);
+   printhex(0x1234);
+   puts("\na*b:\n");
+   printhex(a * b);
+   puts("\n");
 
    puts("Commands:\n");
    for(a = 0; a < N_CMDS; a++) {

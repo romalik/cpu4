@@ -810,7 +810,7 @@ Interface cpu4IR = {
 		2, 1, 0, /* T* */
 		0, 1, 0, /* struct */
 		0,			 /* little_endian */
-		0,			 /* mulops_calls */
+		1,			 /* mulops_calls */
 		0,			 /* wants_callb */
 		0,			 /* wants_argb */
 		1,			 /* left_to_right */

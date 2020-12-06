@@ -115,6 +115,12 @@ void gen_instruction() {
             arg_id |= 0x5;
           } else if(!strcmp((token), "s")) {
             arg_id |= 0x8;
+
+          //theese work for unsigned   
+          } else if(!strcmp((token), "c")) {
+            arg_id |= 0x4;
+          } else if(!strcmp((token), "z")) {
+            arg_id |= 0x2;
           } else {     
             if(arg_id == 0) {
               arg_id = 7;
