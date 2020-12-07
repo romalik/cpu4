@@ -205,8 +205,8 @@ void popw(char *arg)
 
 
 
-#define spill_mask_size 32
-int spill_mask[spill_mask_size]; //32 2-byte spill
+#define spill_mask_size 128
+int spill_mask[spill_mask_size]; //2-byte spill
 
 void clear_spill_mask() {
 	memset(spill_mask, 0, spill_mask_size * sizeof(int));
@@ -529,6 +529,10 @@ static void I(function)(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	print("%s:\n", f->x.name);
 	print("; alloc %d for locals\n", maxoffset);
 	print("; n_spill = %d\n", n_spill);
+
+	if(n_spill*2 + maxoffset > 127) {
+		error("Locals overflow (%d) in function %s\n", (n_spill*2 + maxoffset), f->x.name);
+	}
 	
 	//offset_sp(-(maxoffset + n_spill));
 
