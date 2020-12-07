@@ -12,11 +12,12 @@ void popw(char *arg);
 int calculate_offset_sum(char * str);
 
 
-#define get_spill_sp_offset(X) (current_sp_offset + 1 + (X))
-#define get_local_sp_offset(X) (current_sp_offset + 2*n_spill + 1 + (X))
-#define get_arg_sp_offset(X) (current_sp_offset + 2*n_spill + maxoffset + 2 + current_func_retsize + 1 + (X))
-#define get_retval_sp_offset() (current_sp_offset + 2*n_spill + maxoffset + 2 + 1)
-#define get_retaddr_sp_offset() (current_sp_offset + 2*n_spill + maxoffset + 1)
+int get_spill_sp_offset(int);
+int get_local_sp_offset(int);
+int get_arg_sp_offset(int);
+int get_retval_sp_offset();
+int get_retaddr_sp_offset();
+
 
 #define not_implemented()                           \
 	fprint(stderr, "; not implemented (%s)\n", opname(p->op)); \

@@ -187,6 +187,7 @@ void gen_instruction() {
       case 0: //alus1
       case 1: //alus2
       case 2: //alus3
+      case 3: //cmps2
 
         get_next_token();
         if(eof_hit) {
@@ -199,7 +200,23 @@ void gen_instruction() {
         opcode |= arg_id;
         emit(opcode);
 
-        expect_arg_n = keyword_id + 1;
+        switch(keyword_id) {
+          case 0: //alus1
+            expect_arg_n = 1;
+            break;
+          case 1: //alus2
+            expect_arg_n = 2;
+            break;
+          case 2: //alus3
+            expect_arg_n = 3;
+            break;
+          case 3: //cmps2
+            expect_arg_n = 2;
+            break;
+          default:
+            break;
+        }
+
         expect_arg_size = 1;
 
         return;

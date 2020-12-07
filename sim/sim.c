@@ -362,13 +362,13 @@ uint8_t sel_get_value(uint8_t sel) {
     case 7:
       return high(r.s);
     case 8:
-      return (val16(r.s) + sign_extend(r.off))&0xff;
+      return (val16(r.s) + r.off)&0xff;
     case 9:
-      return ((val16(r.s) + (uint16_t)sign_extend(r.off)) >> 8)&0xff;
+      return ((val16(r.s) + (uint16_t)r.off) >> 8)&0xff;
     case 10:
       return r.off;
     case 11:
-      return mem_read(val16(r.s) + sign_extend(r.off));
+      return mem_read(val16(r.s) + r.off);
     case 12:
       return mem_read(val16(r.z));
     case 13:
@@ -421,7 +421,7 @@ void sel_set_value(uint8_t sel, uint8_t val) {
       r.off = val;
       break;
     case 11:
-      mem_write(val16(r.s) + sign_extend(r.off), val);
+      mem_write(val16(r.s) + r.off, val);
       break;
     case 12:
       mem_write(val16(r.z), val);
@@ -516,12 +516,12 @@ void op_alus2() {
   r.off = mem_read(val16(r.p));
   inc16(r.p);
 
-  r.a = sel_get_value(11);
+  r.b = sel_get_value(11);
 
   r.off = mem_read(val16(r.p));
   inc16(r.p);
 
-  r.b = sel_get_value(11);
+  r.a = sel_get_value(11);
 
   aluop(&r.a, &r.f);
 
@@ -535,12 +535,12 @@ void op_alus3() {
   r.off = mem_read(val16(r.p));
   inc16(r.p);
 
-  r.a = sel_get_value(11);
+  r.b = sel_get_value(11);
 
   r.off = mem_read(val16(r.p));
   inc16(r.p);
 
-  r.b = sel_get_value(11);
+  r.a = sel_get_value(11);
 
   aluop(&r.a, &r.f);
 
@@ -553,10 +553,29 @@ void op_alus3() {
 
 }
 
+
+
 void op_cmp() {
   uint8_t dummy;
   aluop(&dummy, &r.f);
 }
+
+void op_cmps2() {
+  uint8_t dummy;
+  r.off = mem_read(val16(r.p));
+  inc16(r.p);
+
+  r.b = sel_get_value(11);
+
+  r.off = mem_read(val16(r.p));
+  inc16(r.p);
+
+  r.a = sel_get_value(11);
+  aluop(&dummy, &r.f);
+  
+  r.sect = 0; 
+}
+
 
 //cond mask : czn
 
@@ -750,7 +769,7 @@ void op_put_rel_sp() {
   r.off = mem_read(val16(r.p));
   inc16(r.p);
 
-  mem_write(val16(r.s)+sign_extend(r.off), sel_get_value(ARG)); 
+  mem_write(val16(r.s)+r.off, sel_get_value(ARG)); 
   r.sect = 0;
 
 
@@ -760,7 +779,7 @@ void op_get_rel_sp() {
   r.off = mem_read(val16(r.p));
   inc16(r.p);
 
-  sel_set_value(ARG, mem_read(val16(r.s) + sign_extend(r.off)));  
+  sel_set_value(ARG, mem_read(val16(r.s) + r.off));  
   r.sect = 0;
 }
 
@@ -768,9 +787,9 @@ void op_put_rel_sp_w() {
   r.off = mem_read(val16(r.p));
   inc16(r.p);
 
-  mem_write(val16(r.s)+sign_extend(r.off), sel_get_value(ARG)); 
+  mem_write(val16(r.s)+r.off, sel_get_value(ARG)); 
   inc16(r.s);
-  mem_write(val16(r.s)+sign_extend(r.off), sel_get_value(ARG | 0x01)); 
+  mem_write(val16(r.s)+r.off, sel_get_value(ARG | 0x01)); 
   dec16(r.s);
   r.sect = 0;
 }
@@ -779,9 +798,9 @@ void op_get_rel_sp_w() {
   r.off = mem_read(val16(r.p));
   inc16(r.p);
 
-  sel_set_value(ARG, mem_read(val16(r.s) + sign_extend(r.off)));  
+  sel_set_value(ARG, mem_read(val16(r.s) + r.off));  
   inc16(r.s);
-  sel_set_value(ARG | 0x01, mem_read(val16(r.s) + sign_extend(r.off)));  
+  sel_set_value(ARG | 0x01, mem_read(val16(r.s) + r.off));  
   dec16(r.s);
   r.sect = 0;
 }
@@ -821,7 +840,7 @@ op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 
   /*sect 10*/
-op_alus1, op_alus2, op_alus3, op_err, op_err,   op_err,   op_err,   op_err,
+op_alus1, op_alus2, op_alus3, op_cmps2, op_err,   op_err,   op_err,   op_err,
 op_err,   op_err,   op_err,   op_err, op_err,   op_err,   op_err,   op_err,
 
   /*sect 11*/
@@ -840,7 +859,7 @@ char * ops_text[] = {
 "op_err",   "op_err",   "op_err",   "op_err", "op_err",   "op_err",   "op_err",   "op_err",
 
   /*sect 10*/
-"op_alus1", "op_alus2", "op_alus3", "op_err", "op_err",   "op_err",   "op_err",   "op_err",
+"op_alus1", "op_alus2", "op_alus3", "op_cmps2", "op_err",   "op_err",   "op_err",   "op_err",
 "op_err",   "op_err",   "op_err",   "op_err", "op_err",   "op_err",   "op_err",   "op_err",
 
   /*sect 11*/ 

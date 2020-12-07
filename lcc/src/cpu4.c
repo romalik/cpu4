@@ -258,6 +258,20 @@ unsigned int create_no_target() {
 	return 0;
 }
 
+
+void off_fail(int n) {
+	fprintf(stderr, "Fail! Offset %d > 255\n",n);
+	assert(0);
+}
+
+int get_spill_sp_offset(int X) { int r = (current_sp_offset + 1 + (X)); if(r > 255 || r < 0) off_fail(r); return r; }
+int get_local_sp_offset(int X) { int r = (current_sp_offset + 2*n_spill + 1 + (X)); if(r > 255 || r < 0) off_fail(r); return r; }
+int get_arg_sp_offset(int X) { int r = (current_sp_offset + 2*n_spill + maxoffset + 2 + current_func_retsize + 1 + (X)); if(r > 255 || r < 0) off_fail(r); return r; }
+int get_retval_sp_offset() { int r = (current_sp_offset + 2*n_spill + maxoffset + 2 + 1); if(r > 255 || r < 0) off_fail(r); return r; }
+int get_retaddr_sp_offset() { int r = (current_sp_offset + 2*n_spill + maxoffset + 1); if(r > 255 || r < 0) off_fail(r); return r; }
+
+
+
 struct op_processors {
 	int generic_op;
 	void (*fn[4])(Node p);
@@ -530,14 +544,22 @@ static void I(function)(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	print("; alloc %d for locals\n", maxoffset);
 	print("; n_spill = %d\n", n_spill);
 
-	if(n_spill*2 + maxoffset > 127) {
-		error("Locals overflow (%d) in function %s\n", (n_spill*2 + maxoffset), f->x.name);
+	if(n_spill*2 + maxoffset > 255) {
+		fprintf(stderr, "Locals overflow (%d) in function %s\n", (n_spill*2 + maxoffset), f->x.name);
+		assert(0);
 	}
 	
 	//offset_sp(-(maxoffset + n_spill));
 
-	print("adjust_sp s %d\n", -(maxoffset + n_spill*2));
-
+	//print("adjust_sp s %d\n", -(maxoffset + n_spill*2));
+	print("seta sl\n");
+	print("lit b %d\n", (maxoffset + n_spill*2));
+	print("alu sub\n");
+	print("puta sl\n");
+	print("seta sh\n");
+	print("lit b 0\n");
+	print("alu sbc\n");
+	print("puta sh\n");
 /*
    print("; create instruction for this !\n");
 	print("lit off %d\n", -(maxoffset + n_spill*2));
@@ -586,12 +608,13 @@ static void gen02(Node p)
 	}
 }
 
-
 static void gen_node(Node p, int * depth, unsigned int target)
 {
 	int i;
 	int d = 0;
 	int n_kids = 0;
+
+	int must_spill = 0;
 
 	int spill_for_kid = 0;
 	unsigned int target_kid_0 = 0;
@@ -609,6 +632,27 @@ static void gen_node(Node p, int * depth, unsigned int target)
 	//calculate_depth
 	if (p)
 	{
+		switch(generic(p->op)) {
+			case ADD:
+			case SUB:
+			case BOR:
+			case BXOR:
+			case BAND:
+
+			case GE:
+			case GT:
+			case LE:
+			case LT:
+			case NE:
+			case EQ:
+
+				must_spill = 1;
+				break;
+			default:
+				must_spill = 0;
+				break;
+		}
+
 		ident+=3;
 		n_kids = ((p->kids[0])?1:0) + ((p->kids[1])?1:0);
 
@@ -620,7 +664,7 @@ static void gen_node(Node p, int * depth, unsigned int target)
 
 			if(!p->kids[0]->generated) {
 				//put result to spill in second kid present, or if intermediate to be used later
-				if(n_kids > 1 || kid_0_result_preserved) {
+				if(n_kids > 1 || kid_0_result_preserved || must_spill) {
 					target_kid_0 = create_spill_target(alloc_spill());
 				} else {
 					target_kid_0 = create_reg_target(0);
@@ -640,11 +684,8 @@ static void gen_node(Node p, int * depth, unsigned int target)
 			}
 
 			if(!p->kids[1]->generated) {
-				if(p->kids[1]->count > 1) {
-					kid_1_result_preserved = 1;
-				}
 				//put result to spill if intermediate to be used later
-				if(kid_1_result_preserved) {
+				if(kid_1_result_preserved || must_spill) {
 					target_kid_1 = create_spill_target(alloc_spill());
 				} else {
 					target_kid_1 = create_reg_target(1);
@@ -675,7 +716,7 @@ static void gen_node(Node p, int * depth, unsigned int target)
 
 
 		if(is_target_reg(target)) {
-			if(p->count > 1) {
+			if(p->count > 1 || must_spill) {
 				target = create_spill_target(alloc_spill());
 			}
 		}
