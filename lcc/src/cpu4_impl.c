@@ -410,43 +410,51 @@ void call_op(Node p) {
   print("calls\n");
   current_sp_offset -= 2;
 
-  reg_name_target = get_target_reg_name(p, 0);
+  if(is_target(p->target)) {
+    reg_name_target = get_target_reg_name(p, 0);
 
-  if(reg_name_target) {
-    if(opsize(p->op) == 0) {
-    } else if(opsize(p->op) == 1) {
-      pop(reg_name_target);
-    } else if(opsize(p->op) == 2) {
-      reg_name_target[1] = 0;
-      popw(reg_name_target);
+    if(reg_name_target) {
+      if(opsize(p->op) == 0) {
+      } else if(opsize(p->op) == 1) {
+        pop(reg_name_target);
+      } else if(opsize(p->op) == 2) {
+        reg_name_target[1] = 0;
+        popw(reg_name_target);
+      } else {
+        not_implemented()
+      }
     } else {
-      not_implemented()
+      if(opsize(p->op) == 0) {
+      } else if(opsize(p->op) == 1) {
+        pop("a");
+        put_reg8_to_target(p, "a", 0);
+      } else if(opsize(p->op) == 2) {
+        popw("a");
+        put_reg8_to_target(p, "a", 0);
+        put_reg8_to_target(p, "b", 1);
+      } else {
+        not_implemented()
+      }
     }
+
+    print("adjust_sp s %d\n", total_arg_size);
+  /*
+    print("; create instruction for this !\n");
+    print("lit off %d\n", total_arg_size);
+    print("seta sol\n");
+    print("setb soh\n");
+    print("puta sl\n");
+    print("putb sh\n");
+    print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
+  */
+    current_sp_offset -= total_arg_size;
   } else {
-    if(opsize(p->op) == 0) {
-    } else if(opsize(p->op) == 1) {
-      pop("a");
-      put_reg8_to_target(p, "a", 0);
-    } else if(opsize(p->op) == 2) {
-      popw("a");
-      put_reg8_to_target(p, "a", 0);
-      put_reg8_to_target(p, "b", 1);
-    } else {
-      not_implemented()
-    }
-  }
+    //unused retval 
+    //discard it
+    print("adjust_sp s %d\n", total_arg_size+opsize(p->op));
+    current_sp_offset -= (total_arg_size+opsize(p->op));
 
-	print("adjust_sp s %d\n", total_arg_size);
-/*
-  print("; create instruction for this !\n");
-	print("lit off %d\n", total_arg_size);
-	print("seta sol\n");
-  print("setb soh\n");
-  print("puta sl\n");
-  print("putb sh\n");
-  print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
-*/
-  current_sp_offset -= total_arg_size;
+  }
 }
 
 void asgn_op(Node p) {

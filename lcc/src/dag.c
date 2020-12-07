@@ -510,7 +510,7 @@ void emitcode(void) {
 		case Address: break;
 		
 		case Asm:
-		      asmcode(cp->u.acode.code, cp->u.acode.argv);
+		      (*IR->asmcode)(cp->u.acode.code, cp->u.acode.argv);
 		      break;
 	
 		case Blockbeg: if (glevel && IR->stabblock) {

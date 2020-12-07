@@ -63,6 +63,7 @@ extern int __crt_MULI2(int,int);
 
 int main() {
    char c;
+   char * tstr = "blah";
    int cmd_idx;
    int a = 3;
    int b = 2;
@@ -86,7 +87,7 @@ int main() {
    b = 0x31;
    puts("\n0x112*0x31 = 0x3472:\n");
 
-   d = __crt_MULI2(a,b);
+   __crt_MULI2(a,b);
 
    printhex(d);
    puts("\n");
@@ -121,6 +122,12 @@ int main() {
       printhex(a); puts(": "); puts(cmds[a]); puts("\n");
    }
 
+   c = 'a';
+   a = 10;
+   b = 0x34;
+
+
+   printf("this is a printf test (a 10 0x34 blah) %c %d 0x%02x %s\n", c, a, b, tstr);
 
    while(1) {
       puts("> ");

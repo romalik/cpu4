@@ -198,8 +198,9 @@ static void assem() {
 	if (t == SCON) {
 		char *s;
 		Symbol *argv = (Symbol *)malloc(11*sizeof(Symbol *));
+
 		s = asmargs(tsym, argv, 11);
-		if (file) {
+		if (1 || file) {
 			code(Asm);
 			codelist->u.acode.code = s;
 			codelist->u.acode.argv = argv;

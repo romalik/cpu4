@@ -70,6 +70,7 @@ ret
 ;
 ;
 __crt_MULI2:
+__crt_MULU2:
 
 ; r = 0;
 litw a 0
@@ -237,10 +238,13 @@ jmp $__crt_DIVI2_loop
 __crt_DIVI2_end:
 ret
 
+
+__crt_DIVU2:
 __crt_DIVI2:
 call $__crt_divide_worker
 ret
 
+__crt_MODU2:
 __crt_MODI2:
 call $__crt_divide_worker
 put_rel_sp_w y 3

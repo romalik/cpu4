@@ -6,7 +6,7 @@ set -x
 ../lcc/build/cpp $1 > $1.i || exit
 ../lcc/build/rcc -target=cpu4 $1.i > $1.s || exit
 ../lcc/build/cpp stdlib.c > stdlib.i || exit
-../lcc/build/rcc -target=cpu4 stdlib.c > stdlib.s || exit
+../lcc/build/rcc -target=cpu4 stdlib.i > stdlib.s || exit
 ../binutils/cpu4as $1.s $1.o || exit
 ../binutils/cpu4as crt0.s crt0.o || exit
 ../binutils/cpu4as crt1.s crt1.o || exit

@@ -418,14 +418,11 @@ void dumptree(Node p)
 	p->emitted = 1;
 	ident -= 3;
 }
-/*
+
 static void I(asmcode)(char * s , Symbol ss[] ) {
-  
-  write(2, "EMIT ASM", strlen("EMIT ASM"));
-  
-  print("asm\n");
+    print("%s\n", s);
 }
-*/
+
 static void I(emit)(Node p)
 {
 	for (; p; p = p->link)
@@ -819,7 +816,7 @@ Interface cpu4IR = {
 		I(address),
 		I(blockbeg),
 		I(blockend),
-		0, //I(asmcode),
+		I(asmcode),
 		I(defaddress),
 		I(defconst),
 		I(defstring),
@@ -865,7 +862,7 @@ Interface cpu4_treeIR = {
 		I(address),
 		I(blockbeg),
 		I(blockend),
-		0, //I(asmcode),
+		0,//I(asmcode),
 		I(defaddress),
 		I(defconst),
 		I(defstring),
