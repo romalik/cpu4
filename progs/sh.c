@@ -71,63 +71,7 @@ int main() {
    char c1 = 5;
    char c2 = 10;
 
-   printhex(0x1234);
-   a = 3;
-   b = 2;
-   puts("\n0x3*0x2 = 0x6:\n");
-   printhex(a * b);
-   puts("\n");
-   a = 0x133;
-   b = 0x24;
-   puts("\n0x133*0x24 = 0x2b2c:\n");
-   printhex(a * b);
-   puts("\n");
-
-   a = 0x112;
-   b = 0x31;
-   puts("\n0x112*0x31 = 0x3472:\n");
-
-   __crt_MULI2(a,b);
-
-   printhex(d);
-   puts("\n");
-
-   a = 0x6;
-   b = 0x2;
-   puts("\n0x6/0x2 = 0x3:\n");
-
-   printhex(a/b);
-   puts("\n");
-
-   a = 0x3A43;
-   b = 0x34D;
-   puts("\n0x3a43/0x34d = 0x11:\n");
-
-   printhex(a/b);
-   puts("\n");
-
-   puts("\n0x3a43%0x34d = 0x226:\n");
-
-   printhex(a%b);
-   puts("\n");
-
-   a = 1234;
-   b = 6420;
-   puts("1234+6420 = 7654\n");
-   printnum(a+b);
-   puts("\n");
-
-   puts("Commands:\n");
-   for(a = 0; a < N_CMDS; a++) {
-      printhex(a); puts(": "); puts(cmds[a]); puts("\n");
-   }
-
-   c = 'a';
-   a = 10;
-   b = 0x34;
-
-
-   printf("this is a printf test (a 10 0x34 blah) %c %d 0x%02x %s\n", c, a, b, tstr);
+   printf("print test (12 23 34 'a' 'b' 'c' 0x3f 0x5c 'blah')%d %d %d %c %c %c 0x%02x 0x%02x '%s'\n", 12,23,34,'a','b','c',0x3f,0x5c,tstr);
 
    while(1) {
       puts("> ");

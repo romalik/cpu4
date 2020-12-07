@@ -184,16 +184,16 @@ void addrl(Node p) {
   char * target_reg = get_target_reg_name(p, 0);
   if(target_reg) {
     target_reg[1] = 0;
-  	print("adjust_sp %s %d\n", target_reg, get_local_sp_offset(atoi(p->syms[0]->x.name)));
+  	print("adjust_sp %s %d\n", target_reg, get_local_sp_offset(calculate_offset_sum(p->syms[0]->x.name)));
   } else {
-  	print("adjust_sp a %d\n", get_local_sp_offset(atoi(p->syms[0]->x.name)));
+  	print("adjust_sp a %d\n", get_local_sp_offset(calculate_offset_sum(p->syms[0]->x.name)));
   	put_reg8_to_target(p, "a", 0);
   	put_reg8_to_target(p, "b", 1);
 
   }
 
 /*
-	print("lit off %d\n", get_local_sp_offset(atoi(p->syms[0]->x.name)));
+	print("lit off %d\n", get_local_sp_offset(calculate_offset_sum(p->syms[0]->x.name)));
 	print("seta sol\n");
 	put_reg8_to_target(p, "a", 0);
 	print("seta soh\n");
@@ -205,16 +205,16 @@ void addrf(Node p) {
   char * target_reg = get_target_reg_name(p, 0);
   if(target_reg) {
     target_reg[1] = 0;
-  	print("adjust_sp %s %d\n", target_reg, get_arg_sp_offset(atoi(p->syms[0]->x.name)));
+  	print("adjust_sp %s %d\n", target_reg, get_arg_sp_offset(calculate_offset_sum(p->syms[0]->x.name)));
   } else {
-  	print("adjust_sp a %d\n", get_arg_sp_offset(atoi(p->syms[0]->x.name)));
+  	print("adjust_sp a %d\n", get_arg_sp_offset(calculate_offset_sum(p->syms[0]->x.name)));
   	put_reg8_to_target(p, "a", 0);
   	put_reg8_to_target(p, "b", 1);
 
   }
 
 /*
-	print("lit off %d\n", get_arg_sp_offset(atoi(p->syms[0]->x.name)));
+	print("lit off %d\n", get_arg_sp_offset(calculate_offset_sum(p->syms[0]->x.name)));
 	print("seta sol\n");
 	put_reg8_to_target(p, "a", 0);
 	print("seta soh\n");

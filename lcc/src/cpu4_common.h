@@ -9,7 +9,7 @@ void pushw(char *arg);
 void pop(char *arg);
 void popw(char *arg);
 
-
+int calculate_offset_sum(char * str);
 
 
 #define get_spill_sp_offset(X) (current_sp_offset + 1 + (X))

@@ -11,6 +11,30 @@ int last_emitted =0;
 
 #define debug_all 0
 
+int calculate_offset_sum(char * str) {
+  char * s = str;
+  char * p;
+  int offset = atoi(str);
+  int sign = 1;
+  while(1) {
+    p = strchr(s, '+');
+    if(p == NULL) {
+      p = strchr(s, '-');
+    }
+    if(p == NULL) return offset;
+
+    s = p;
+    if(*s == '+') {
+      sign = 1;
+    } else if(*s == '-') {
+      sign = -1;
+    }
+    s++;
+    offset += sign * atoi(s);
+  }
+}
+
+
 static void I(segment)(int n)
 {
 	static int cseg;

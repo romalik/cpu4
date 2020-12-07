@@ -953,6 +953,11 @@ void print_state() {
   printf("==========");
   printf("==========\n");
 
+/*
+  for(soff = 100; soff > 0; soff--) {
+    print_stack(soff);printf("\n");
+  }
+*/
 }
 
 void init_signals() {
