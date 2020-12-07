@@ -153,9 +153,9 @@ static int prints(char **out, const char *string, int width, int pad) {
 static int printi(char **out, int i, int b, int sg, int width, int pad,
                   int letbase) {
     char *s;
-		char print_buf[PRINT_BUF_LEN];
     int t, neg = 0, pc = 0;
     unsigned int u = i;
+    char print_buf[PRINT_BUF_LEN];
 
     if (i == 0) {
         print_buf[0] = '0';
@@ -203,7 +203,7 @@ static int printi(char **out, int i, int b, int sg, int width, int pad,
 }
 
 static int print(char **out, int *varg) {
-		char scr[2];
+    char scr[2];
     int width, pad;
     int pc = 0;
     char *format = (char *)(*varg++);

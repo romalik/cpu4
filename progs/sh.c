@@ -73,6 +73,17 @@ int main() {
 
    printf("print test (12 23 34 'a' 'b' 'c' 0x3f 0x5c 'blah')%d %d %d %c %c %c 0x%02x 0x%02x '%s'\n", 12,23,34,'a','b','c',0x3f,0x5c,tstr);
 
+
+   a = 1231;
+   b = 38;
+
+   printf("1231*18 = %d (=22158)\n", a*b);
+
+   a = 45;
+   b = 30;
+
+   printf("45*30 = %d (=1350)\n", a*b);
+
    while(1) {
       puts("> ");
       getline();

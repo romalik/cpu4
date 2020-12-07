@@ -1,5 +1,14 @@
+#include "stdlib.h"
+
+void __puts(char *s) {
+  while(*s) {
+    putc(*s);
+    s++;
+  }
+}
+
+
 int main() {
-   int i = 3;
-   int j;
-   j = i << 1;
+   __puts("test\n");   
+   return 0;
 }
