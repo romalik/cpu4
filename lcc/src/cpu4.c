@@ -76,8 +76,11 @@ static void I(defconst)(int suffix, int size, Value v)
 			print(".byte %d\n", v.i);
 	} else if(size == 2) {
 			print(".word %d\n", v.i);
+	} else if(size == 4) {
+			print(".word %d\n", (v.i & 0xffff));
+			print(".word %d\n", ((v.i >> 16)&0xffff));
 	} else {
-		fprintf(stderr, "defconst of size > 2\n");
+		fprintf(stderr, "defconst of size > 4\n");
 		assert(0);
 	}
 
@@ -189,27 +192,32 @@ void clear_spill_mask() {
 	memset(spill_mask, 0, spill_mask_size * sizeof(int));
 }
 
-int alloc_spill() {
+int alloc_spill(int sz) {
 	int i = 0;
-	for(i = 0; i<spill_mask_size; i++) {
+	for(i = 0; i<spill_mask_size + 1 - sz; i++) {
 		if(spill_mask[i] == 0) { 
-			spill_mask[i] = 1;
-#if debug_all
-			print("<alloc spill %d>\n", i);
-#endif
-			return i;
+			if(sz == 1) {
+				spill_mask[i] = 1;
+				return i;
+			} else {
+				if(spill_mask[i + 1] == 0) { 
+					spill_mask[i] = 1;
+					spill_mask[i+1] = 1;
+					return i;
+				}
+			}
 		}
 	}
 	fprintf(stderr, "spill overflow!\n");
 	assert(0);
 }
 
-void free_spill(int i) {
-	assert(i<spill_mask_size);
+void free_spill(int i, int sz) {
+	assert(i<spill_mask_size + 1 - sz);
 	spill_mask[i] = 0;
-#if debug_all
-	print("<free spill %d>\n", i);
-#endif
+	if(sz == 2) {
+		spill_mask[i+1] = 0;
+	}
 }
 
 
@@ -279,30 +287,30 @@ struct op_processors procs[] = {
 	{CVI,					{intr_fn,			cv,					cv,					intr_fn}},
 	{CVP,					{intr_fn,			cv,					cv,					intr_fn}},
 	{CVU,					{intr_fn,			cv,					cv,					intr_fn}},
-	{ARG, 				{intr_fn,			arg,				arg,				intr_fn}},
-	{BCOM, 				{intr_fn,			alu_unary,	alu_unary,	intr_fn}},
-	{NEG, 				{intr_fn,			alu_unary,	alu_unary,	intr_fn}},
-	{INDIR, 			{intr_fn,			indir,			indir,			intr_fn}},
+	{ARG, 				{intr_fn,			arg,				arg,				arg}},
+	{BCOM, 				{intr_fn,			alu_unary,	alu_unary,	alu_unary4}},
+	{NEG, 				{intr_fn,			alu_unary,	alu_unary,	alu_unary}},
+	{INDIR, 			{intr_fn,			indir,			indir,			indir4}},
 	{JUMP, 				{jmp,					intr_fn,		jmp,				intr_fn}},
 	{RET,					{ret,					ret,				ret,				intr_fn}},
 	{CALL,				{call_op,			call_op,		call_op,		intr_fn}},
-	{ASGN, 				{intr_fn,			asgn_op,		asgn_op,		intr_fn}},
-	{BOR, 				{intr_fn,			alu,				alu,				intr_fn}},
-	{BAND, 				{intr_fn,			alu,				alu,				intr_fn}},
-	{BXOR, 				{intr_fn,			alu,				alu,				intr_fn}},
-	{RSH, 				{intr_fn,			shr,				shr,				intr_fn}},
-	{LSH,					{intr_fn,			shl,				shl,				intr_fn}},
-	{ADD, 				{intr_fn,			alu,				alu,				intr_fn}},
-	{SUB, 				{intr_fn,			alu,				alu,				intr_fn}},
+	{ASGN, 				{intr_fn,			asgn_op,		asgn_op,		asgn4}},
+	{BOR, 				{intr_fn,			alu,				alu,				alu4}},
+	{BAND, 				{intr_fn,			alu,				alu,				alu4}},
+	{BXOR, 				{intr_fn,			alu,				alu,				alu4}},
+	{RSH, 				{intr_fn,			shr,				shr,				shr4}},
+	{LSH,					{intr_fn,			shl,				shl,				shl4}},
+	{ADD, 				{intr_fn,			alu,				alu,				alu4}},
+	{SUB, 				{intr_fn,			alu,				alu,				alu4}},
 	{DIV, 				{intr_fn,			intr_fn,		intr_fn,		intr_fn}},
 	{MUL, 				{intr_fn,			intr_fn,		intr_fn,		intr_fn}},
 	{MOD,					{intr_fn,			intr_fn,		intr_fn,		intr_fn}},
-	{EQ, 					{intr_fn,			cond_br,		cond_br,		intr_fn}},
-	{NE, 					{intr_fn,			cond_br,		cond_br,		intr_fn}},
-	{GT, 					{intr_fn,			cond_br,		cond_br,		intr_fn}},
-	{GE, 					{intr_fn,			cond_br,		cond_br,		intr_fn}},
-	{LE, 					{intr_fn,			cond_br,		cond_br,		intr_fn}},
-	{LT,				  {intr_fn,			cond_br,		cond_br,		intr_fn}},
+	{EQ, 					{intr_fn,			cond_br,		cond_br,		cond_br}},
+	{NE, 					{intr_fn,			cond_br,		cond_br,		cond_br}},
+	{GT, 					{intr_fn,			cond_br,		cond_br,		cond_br}},
+	{GE, 					{intr_fn,			cond_br,		cond_br,		cond_br}},
+	{LE, 					{intr_fn,			cond_br,		cond_br,		cond_br}},
+	{LT,				  	{intr_fn,			cond_br,		cond_br,		cond_br}},
 
 	0, {0,0,0,0}
 };
@@ -363,7 +371,7 @@ char * custom_opnames[] = {
 void optimize_node(Node p) {
 	
 	if(p->custom_opname) return;
-
+	if(opsize(p->op) > 2) return;
 
 	if(generic(p->op) == INDIR) {
 		if(p->kids[0]->custom_opname) return;
@@ -694,6 +702,7 @@ static void gen_node(Node p, int * depth, unsigned int target)
 	int n_kids = 0;
 
 	int must_spill = 0;
+	int must_spill_target = 0;
 
 	int spill_for_kid = 0;
 	unsigned int target_kid_0 = 0;
@@ -733,6 +742,10 @@ static void gen_node(Node p, int * depth, unsigned int target)
 				break;
 		}
 
+		must_spill_target = must_spill;
+
+		if(opsize(p->op) > 2) must_spill_target = 1;
+
 		ident+=3;
 		n_kids = ((p->kids[0])?1:0) + ((p->kids[1])?1:0);
 
@@ -745,7 +758,11 @@ static void gen_node(Node p, int * depth, unsigned int target)
 			if(!p->kids[0]->generated) {
 				//put result to spill in second kid present, or if intermediate to be used later
 				if(n_kids > 1 || kid_0_result_preserved || must_spill) {
-					target_kid_0 = create_spill_target(alloc_spill());
+					if(opsize(p->kids[0]->op) > 2) {
+						target_kid_0 = create_spill_target(alloc_spill(2));
+					} else {
+						target_kid_0 = create_spill_target(alloc_spill(1));
+					}
 				} else {
 					target_kid_0 = create_reg_target(0);
 				}
@@ -766,7 +783,11 @@ static void gen_node(Node p, int * depth, unsigned int target)
 			if(!p->kids[1]->generated) {
 				//put result to spill if intermediate to be used later
 				if(kid_1_result_preserved || must_spill) {
-					target_kid_1 = create_spill_target(alloc_spill());
+					if(opsize(p->kids[1]->op) > 2) {
+						target_kid_1 = create_spill_target(alloc_spill(2));
+					} else {
+						target_kid_1 = create_spill_target(alloc_spill(1));
+					}
 				} else {
 					target_kid_1 = create_reg_target(1);
 				}
@@ -783,7 +804,11 @@ static void gen_node(Node p, int * depth, unsigned int target)
 		if(p->kids[0]) {
 			if(is_target_spill(p->kids[0]->target)) {
 				if(!kid_0_result_preserved) {
-					free_spill(get_target(p->kids[0]->target));
+					if(opsize(p->kids[0]->op) > 2) {
+						free_spill(get_target(p->kids[0]->target),2);
+					} else {
+						free_spill(get_target(p->kids[0]->target),1);
+					}
 				}
 			}
 		}
@@ -791,7 +816,11 @@ static void gen_node(Node p, int * depth, unsigned int target)
 		if(p->kids[1]) {
 			if(is_target_spill(p->kids[1]->target)) {
 				if(!kid_1_result_preserved) {
-					free_spill(get_target(p->kids[1]->target));
+					if(opsize(p->kids[1]->op) > 2) {
+						free_spill(get_target(p->kids[1]->target),2);
+					} else {
+						free_spill(get_target(p->kids[1]->target),1);
+					}
 				}
 			}
 		}
@@ -800,14 +829,22 @@ static void gen_node(Node p, int * depth, unsigned int target)
 
 
 		if(is_target_reg(target)) {
-			if(p->count > 1 || must_spill) {
-				target = create_spill_target(alloc_spill());
+			if(p->count > 1 || must_spill_target) {
+				if(opsize(p->op) > 2) {
+					target = create_spill_target(alloc_spill(2));
+				} else {
+					target = create_spill_target(alloc_spill(1));
+				}
 			}
 		}
 
 		if(!is_target(target)) {
 			if(p->count > 0) {
-				target = create_spill_target(alloc_spill());
+				if(opsize(p->op) > 2) {
+					target = create_spill_target(alloc_spill(2));
+				} else {
+					target = create_spill_target(alloc_spill(1));
+				}
 			}
 		}
 
@@ -952,8 +989,8 @@ Interface cpu4IR = {
 		1, 1, 0, /* char */
 		2, 1, 0, /* short */
 		2, 1, 0, /* int */
-		4, 1, 0, /* long */
-		4, 1, 0, /* long long */
+		4, 1, 1, /* long */
+		4, 1, 1, /* long long */
 		2, 1, 1, /* float */
 		2, 1, 1, /* double */
 		2, 1, 1, /* long double */
@@ -998,8 +1035,8 @@ Interface cpu4_treeIR = {
 		1, 1, 0, /* char */
 		2, 1, 0, /* short */
 		2, 1, 0, /* int */
-		4, 1, 0, /* long */
-		4, 1, 0, /* long long */
+		4, 1, 1, /* long */
+		4, 1, 1, /* long long */
 		2, 1, 1, /* float */
 		2, 1, 1, /* double */
 		2, 1, 1, /* long double */

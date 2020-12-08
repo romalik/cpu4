@@ -46,3 +46,12 @@ void asgnf(Node);
 void asgng(Node);
 void callc(Node);
 void jmpc(Node);
+
+
+
+void indir4(Node);
+void asgn4(Node);
+void alu4(Node);
+void alu_unary4(Node);
+void shl4(Node);
+void shr4(Node);

@@ -225,6 +225,58 @@ void alu(Node p) {
   }
 }
 
+
+void alu4(Node p) {
+  int i;
+  int alus_2 = 0;
+  char * cmd;
+  int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+  int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
+  int off_target = get_spill_sp_offset(get_target(p->target)*2);
+  
+  if(off_target == off_arg_0) {
+    alus_2 = 1;
+  }
+
+
+  switch(generic(p->op)) {
+    case BOR:	  cmd = "or";	  break;
+    case BAND:	cmd = "and";	break;
+    case BXOR:	cmd = "xor";	break;
+    case ADD:	  cmd = "add";	break;
+    case SUB:	  cmd = "sub";	break;
+    default:		assert(0);		break;
+  }
+
+  if(alus_2) {
+    print("alus2 %s %d %d\n", cmd, off_arg_1, off_arg_0);
+  } else {
+    print("alus3 %s %d %d %d\n", cmd, off_arg_1, off_arg_0, off_target);
+  }
+
+  for(i = 0; i<3; i++) {
+    off_arg_0 += 1;
+    off_arg_1 += 1;
+    off_target += 1;
+
+    switch(generic(p->op)) {
+      case BOR:	  cmd = "or";	  break;
+      case BAND:	cmd = "and";	break;
+      case BXOR:	cmd = "xor";	break;
+      case ADD:	  cmd = "adc";	break;
+      case SUB:	  cmd = "sbc";	break;
+      default:		assert(0);		break;
+    }
+
+    if(alus_2) {
+      print("alus2 %s %d %d\n", cmd, off_arg_1, off_arg_0);
+    } else {
+      print("alus3 %s %d %d %d\n", cmd, off_arg_1, off_arg_0, off_target);
+    }
+  }
+}
+
+
 void alu_unary(Node p) {
 	put_kid_to_reg8(p, 0, "a", 0);
 
@@ -245,6 +297,40 @@ void alu_unary(Node p) {
     }
 
     put_reg8_to_target(p, "a", 1);
+  }
+}
+
+void alu_unary4(Node p) {
+  int i;
+  char * cmd;
+  int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+  int off_target = get_spill_sp_offset(get_target(p->target)*2);
+  
+  if(off_target != off_arg_0) {
+    fprintf(stderr, "alu_unary_4 src != dst\n");
+    assert(0);
+  }
+
+
+  switch(generic(p->op)) {
+    case BCOM:	cmd = "not";	  break;
+    case NEG:	  cmd = "neg";  	break;
+    default:		assert(0);		break;
+  }
+
+  print("alus1 %s %d\n", cmd, off_arg_0);
+
+  for(i = 0; i<3; i++) {
+    off_arg_0 += 1;
+    off_target += 1;
+
+    switch(generic(p->op)) {
+      case BCOM:	cmd = "not";	  break;
+      case NEG:	  cmd = "neg";  	break;
+      default:		assert(0);		break;
+    }
+
+    print("alus1 %s %d\n", cmd, off_arg_0);
   }
 }
 
@@ -415,8 +501,10 @@ void cv(Node p) {
 		else if (p->syms[0]->u.c.v.i == 2) { //from size 2
         put_kid_to_reg8(p, 0, "a", 0);
         put_reg8_to_target(p, "a", 0);
-		}
-		else {
+		} else if (p->syms[0]->u.c.v.i == 4) { //from size 4, same
+        put_kid_to_reg8(p, 0, "a", 0);
+        put_reg8_to_target(p, "a", 0);
+		} else {
 			not_implemented()
 		}
 	}
@@ -450,8 +538,74 @@ void cv(Node p) {
         put_kid_to_reg16(p, 0, "a");
         put_reg16_to_target(p, "a");
 			}
+		} else if (p->syms[0]->u.c.v.i == 4) { //from size 4, same
+        put_kid_to_reg16(p, 0, "a");
+        put_reg16_to_target(p, "a");
+		} else {
+			not_implemented()
 		}
-		else {
+	}
+	else if ((opsize(p->op)) == 4) { //to size 4
+		if (p->syms[0]->u.c.v.i == 1) { //from size 1
+        put_kid_to_reg8(p, 0, "a", 0);
+        put_reg8_to_target(p, "a", 0);
+
+        //sign extension
+        if(is_signed) {
+          int i = genlabel(1);
+          print("lit b 0x80\n");
+          print("cmp and\n");
+          print("lit b 0\n");
+          print("jmp z $__label_%d\n", i);
+          print("lit b 0xff\n");
+          print("__label_%d:\n", i);
+          put_reg8_to_target(p, "b", 1);
+          put_reg8_to_target(p, "b", 2);
+          put_reg8_to_target(p, "b", 3);
+
+        } else {
+          print("lit b 0\n");
+          put_reg8_to_target(p, "b", 1);
+          put_reg8_to_target(p, "b", 2);
+          put_reg8_to_target(p, "b", 3);
+
+        }
+
+		}
+		else if (p->syms[0]->u.c.v.i == 2) { //from size 2
+        put_kid_to_reg16(p, 0, "a");
+        put_reg16_to_target(p, "a");
+
+        //sign extension
+        if(is_signed) {
+          int i = genlabel(1);
+          print("lit a 0x80\n");
+          print("cmp and\n");
+          print("lit a 0\n");
+          print("jmp z $__label_%d\n", i);
+          print("lit a 0xff\n");
+          print("__label_%d:\n", i);
+          put_reg8_to_target(p, "a", 1);
+          put_reg8_to_target(p, "a", 2);
+          put_reg8_to_target(p, "a", 3);
+
+        } else {
+          print("lit a 0\n");
+          put_reg8_to_target(p, "a", 1);
+          put_reg8_to_target(p, "a", 2);
+          put_reg8_to_target(p, "a", 3);
+
+        }
+		} else if (p->syms[0]->u.c.v.i == 4) { //from size 4, same
+			if(p->kids[0]->target == p->target) {
+				print("; bypass conversion sz4-sz4\n");
+			} else {
+        print("get_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->kids[0]->target)*2));
+        print("put_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->target)*2));
+        print("get_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->kids[0]->target)*2) + 2);
+        print("put_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->target)*2) + 2);
+			}
+		} else {
 			not_implemented()
 		}
 	}
@@ -478,6 +632,11 @@ void arg(Node p) {
       put_kid_to_reg16(p, 0, "a");
       pushw("a");
     }
+  } else if(opsize(p->op) == 4) {
+    print("get_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->kids[0]->target)*2) + 2);
+    pushw("a");
+    print("get_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->kids[0]->target)*2));
+    pushw("a");
   } else {
     not_implemented()
   }
@@ -507,6 +666,29 @@ void indir(Node p) {
 
   put_reg8_to_target(p, "b", 0);
 
+}
+
+void indir4(Node p) {
+  char * reg_name;
+  reg_name = get_kid_reg_name(p,0,0);
+  if(reg_name) {
+    reg_name[1] = 0;
+  } else {
+    put_kid_to_reg16(p, 0, "x");
+    reg_name = "x";
+  }
+
+  print("seta m[%s]\n", reg_name);
+  print("put_rel_sp a %d\n" ,get_spill_sp_offset(get_target(p->target)*2));
+  print("%s++\n", reg_name);
+  print("seta m[%s]\n", reg_name);
+  print("put_rel_sp a %d\n" ,get_spill_sp_offset(get_target(p->target)*2) + 1);
+  print("%s++\n", reg_name);
+  print("seta m[%s]\n", reg_name);
+  print("put_rel_sp a %d\n" ,get_spill_sp_offset(get_target(p->target)*2) + 2);
+  print("%s++\n", reg_name);
+  print("seta m[%s]\n", reg_name);
+  print("put_rel_sp a %d\n" ,get_spill_sp_offset(get_target(p->target)*2) + 3);
 }
 
 void jmp(Node p) {
@@ -718,6 +900,22 @@ void asgn_op(Node p) {
   }
 }
 
+void asgn4(Node p) {
+
+  print("get_rel_sp_w x %d\n", get_spill_sp_offset(get_target(p->kids[0]->target)*2));
+
+  print("get_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->kids[1]->target)*2));
+  print("puta m[x]\n");
+  print("x++\n");
+  print("putb m[x]\n");
+  print("x++\n");
+  print("get_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->kids[1]->target)*2 + 2));
+  print("puta m[x]\n");
+  print("x++\n");
+  print("putb m[x]\n");
+
+}
+
 
 void cond_br(Node p) {
   char * cmd;
@@ -799,6 +997,9 @@ void cond_br(Node p) {
 
 
     } else {
+      fprintf(stderr, "branch op sz2 not in spill!\n");
+      assert(0);
+      /*
       // compare high bytes, if equal - jump to low byte comparison
       put_kid_to_reg8(p, 0, "a", 1);
       put_kid_to_reg8(p, 1, "b", 1);
@@ -821,7 +1022,51 @@ void cond_br(Node p) {
       print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
 
       print("__jump_label_2__%d:\n", i);
+      */
     }
+  } else if(opsize(p->op) == 4) {
+
+    assert( is_target_spill(p->kids[0]->target) &&
+        is_target_spill(p->kids[1]->target));
+      
+    int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+    int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
+    i = genlabel(1);
+
+    // compare high bytes, if equal - jump to low byte comparison
+    print("cmps2 sub %d %d\n", off_arg_1+3, off_arg_0+3);
+
+    print("jmp e $__jlabel_3__%d\n", i);
+    if ((generic(p->op)) != EQ)
+      print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
+
+    print("jmp $__jlabel_end__%d\n", i);
+    print("__jlabel_3__%d:\n", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+2, off_arg_0+2);
+
+    print("jmp e $__jlabel_2__%d\n", i);
+    if ((generic(p->op)) != EQ)
+      print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
+
+    print("jmp $__jlabel_end__%d\n", i);
+    print("__jlabel_2__%d:\n", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
+
+    print("jmp e $__jlabel_1__%d\n", i);
+    if ((generic(p->op)) != EQ)
+      print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
+
+    print("jmp $__jlabel_end__%d\n", i);
+    print("__jlabel_1__%d:\n", i);
+
+    // compare low bytes if high equal
+    print("cmps2 sub %d %d\n", off_arg_1, off_arg_0);
+
+    print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
+
+    print("__jlabel_end__%d:\n", i);
   }
 }
 
@@ -866,6 +1111,25 @@ void shl(Node p) {
       }
 
     }
+  }
+}
+
+void shl4(Node p) {
+  int n;
+  int i;
+  int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+
+  if (generic(p->kids[1]->op) == CNST) {
+    n = atoi(p->kids[1]->syms[0]->x.name);
+  } else {
+    not_implemented()
+  }
+
+  for(i = 0; i<n; i++) {
+  	print("alus shl %d\n", off_arg_0);
+  	print("alus shlc %d\n", off_arg_0+1);
+  	print("alus shlc %d\n", off_arg_0+2);
+  	print("alus shlc %d\n", off_arg_0+3);
   }
 }
 
@@ -917,6 +1181,26 @@ void shr(Node p) {
   }
 }
 
+void shr4(Node p) {
+  int n;
+  int i;
+  int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+
+  if (generic(p->kids[1]->op) == CNST) {
+    n = atoi(p->kids[1]->syms[0]->x.name);
+  } else {
+    not_implemented()
+  }
+
+  for(i = 0; i<n; i++) {
+  	print("alus shr %d\n", off_arg_0+3);
+  	print("alus shrc %d\n", off_arg_0+2);
+  	print("alus shrc %d\n", off_arg_0+1);
+  	print("alus shrc %d\n", off_arg_0);
+  }
+}
+
+
 
 void intr_fn(Node p) {
   int i;
@@ -952,13 +1236,32 @@ void intr_fn(Node p) {
       pushw("y");
       args_sz+=2;
     }
+  } else if(opsize(p->op) == 4) {
+    if(p->kids[0]) {
+      print("get_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->kids[0]->target)*2) + 2);
+      pushw("a");
+      print("get_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->kids[0]->target)*2));
+      pushw("a");
+
+      args_sz+=4;
+    }
+    if(p->kids[1]) {
+      print("get_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->kids[1]->target)*2) + 2);
+      pushw("a");
+      print("get_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->kids[1]->target)*2));
+      pushw("a");
+
+      args_sz+=4;
+    }
   }
 
   print("; reserve retval\n");
+
   for(i = 0; i<(opsize(p->op)); i++) {
     print("s--\n");
     current_sp_offset++;
   }
+
 
 
   print("call $__crt_%s\n", opname(p->op));
@@ -983,6 +1286,11 @@ void intr_fn(Node p) {
     } else if(opsize(p->op) == 2) {
       popw("a");
       put_reg16_to_target(p, "a");
+    } else if(opsize(p->op) == 4) {
+      popw("a");
+      print("put_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->target)*2));
+      popw("a");
+      print("put_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->target)*2) + 2);
     } else {
       not_implemented()
     }

@@ -319,7 +319,59 @@ static int printi(char **out, int i, int b, int sg, int width, int pad,
 
     return pc + prints(out, s, width, pad);
 }
+/*
+static int printl(char **out, long i, int b, int sg, int width, int pad,
+                  int letbase) {
+    char *s;
+    int t, neg = 0, pc = 0;
+    unsigned int u = i;
+    char print_buf[PRINT_BUF_LEN];
 
+    if (i == 0) {
+        print_buf[0] = '0';
+        print_buf[1] = '\0';
+        return prints(out, print_buf, width, pad);
+    }
+
+    if (sg && b == 10 && i < 0) {
+        neg = 1;
+        u = -i;
+    }
+
+    s = print_buf + PRINT_BUF_LEN - 1;
+    *s = '\0';
+
+    if (b == 16) {
+        while (u) {
+            t = u & 0xf;
+            if (t >= 10)
+                t += letbase - '0' - 10;
+            *--s = t + '0';
+            u = u >> 4;
+        }
+    } else {
+        while (u) {
+            t = u % b;
+            if (t >= 10)
+                t += letbase - '0' - 10;
+            *--s = t + '0';
+            u /= b;
+        }
+    }
+
+    if (neg) {
+        if (width && (pad & PAD_ZERO)) {
+            printchar(out, '-');
+            ++pc;
+            --width;
+        } else {
+            *--s = '-';
+        }
+    }
+
+    return pc + prints(out, s, width, pad);
+}
+*/
 static int print(char **out, int *varg) {
     char scr[2];
     int width, pad;
@@ -366,6 +418,13 @@ static int print(char **out, int *varg) {
                 pc += printi(out, *varg++, 10, 0, width, pad, 'a');
                 continue;
             }
+            /*
+            if (*format == 'l') {
+                pc += printi(out, *varg++, 10, 1, width, pad, 'a');
+                varg++;
+                continue;
+            }
+            */
             if (*format == 'c') {
                 /* char are converted to int then pushed on the stack */
                 scr[0] = *varg++;

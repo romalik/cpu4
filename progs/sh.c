@@ -65,6 +65,7 @@ int main() {
    char c;
    char * tstr = "blah";
    int cmd_idx;
+   long long_var = 1234567;
    int a = 3;
    int b = 2;
    int d = 0;
@@ -83,6 +84,8 @@ int main() {
    b = 30;
 
    printf("45*30 = %d (=1350)\n", a*b);
+
+//   printf("long: %l\n", long_var);
 
    while(1) {
       puts("> ");
