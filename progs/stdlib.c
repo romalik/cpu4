@@ -324,7 +324,7 @@ static int printl(char **out, long i, int b, int sg, int width, int pad,
                   int letbase) {
     char *s;
     int t, neg = 0, pc = 0;
-    unsigned int u = i;
+    unsigned long u = i;
     char print_buf[PRINT_BUF_LEN];
 
     if (i == 0) {
@@ -451,4 +451,33 @@ int printf(const char *format, ...) {
 int sprintf(char *out, const char *format, ...) {
     int *varg = (int *)(&format);
     return print(&out, varg);
+}
+
+
+
+int multiply16bit(int m, int n)
+{
+    unsigned char mLow = (m & 0x00FF);          // stores first 8-bits of m
+    unsigned char mHigh = (m & 0xFF00) >> 8;    // stores last 8-bits of m
+ 
+    unsigned char nLow = (n & 0x00FF);          // stores first 8-bits of n
+    unsigned char nHigh = (n & 0xFF00) >> 8;    // stores last 8-bits of n
+ 
+    unsigned short mLow_nLow = mLow * nLow;
+    unsigned short mHigh_nLow = mHigh * nLow;
+    unsigned short mLow_nHigh = mLow * nHigh;
+    unsigned short mHigh_nHigh = mHigh * nHigh;
+ 
+    // return 32-bit result (don't forget to shift mHigh_nLow and
+    // mLow_nHigh by 1 byte and mHigh_nHigh by 2 bytes)
+ 
+    return mLow_nLow + ((mHigh_nLow + mLow_nHigh) << 8) + (mHigh_nHigh << 16);
+}
+
+long __crt_MODU4(long a, long b) {
+    return 1;
+}
+
+long __crt_DIVU4(long a, long b) {
+    return 1;
 }

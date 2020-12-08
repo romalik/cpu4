@@ -730,6 +730,11 @@ void ret(Node p) {
       put_kid_to_reg16(p, 0, "a");
   		print("put_rel_sp_w a %d\n", get_retval_sp_offset());
     }
+  } else if(opsize(p->op) == 4) {
+    print("get_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->kids[0]->target)*2 + 2));
+    print("put_rel_sp_w a %d\n", get_retval_sp_offset() + 2);
+    print("get_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->kids[0]->target)*2));
+    print("put_rel_sp_w a %d\n", get_retval_sp_offset());
   } else {
     not_implemented()
   }
@@ -1126,10 +1131,10 @@ void shl4(Node p) {
   }
 
   for(i = 0; i<n; i++) {
-  	print("alus shl %d\n", off_arg_0);
-  	print("alus shlc %d\n", off_arg_0+1);
-  	print("alus shlc %d\n", off_arg_0+2);
-  	print("alus shlc %d\n", off_arg_0+3);
+  	print("alus1 shl %d\n", off_arg_0);
+  	print("alus1 shlc %d\n", off_arg_0+1);
+  	print("alus1 shlc %d\n", off_arg_0+2);
+  	print("alus1 shlc %d\n", off_arg_0+3);
   }
 }
 
@@ -1193,10 +1198,10 @@ void shr4(Node p) {
   }
 
   for(i = 0; i<n; i++) {
-  	print("alus shr %d\n", off_arg_0+3);
-  	print("alus shrc %d\n", off_arg_0+2);
-  	print("alus shrc %d\n", off_arg_0+1);
-  	print("alus shrc %d\n", off_arg_0);
+  	print("alus1 shr %d\n", off_arg_0+3);
+  	print("alus1 shrc %d\n", off_arg_0+2);
+  	print("alus1 shrc %d\n", off_arg_0+1);
+  	print("alus1 shrc %d\n", off_arg_0);
   }
 }
 

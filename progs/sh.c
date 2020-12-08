@@ -65,7 +65,7 @@ int main() {
    char c;
    char * tstr = "blah";
    int cmd_idx;
-   long long_var = 1234567;
+   long long_var = 1201799;
    int a = 3;
    int b = 2;
    int d = 0;

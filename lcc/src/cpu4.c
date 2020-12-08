@@ -292,7 +292,7 @@ struct op_processors procs[] = {
 	{NEG, 				{intr_fn,			alu_unary,	alu_unary,	alu_unary}},
 	{INDIR, 			{intr_fn,			indir,			indir,			indir4}},
 	{JUMP, 				{jmp,					intr_fn,		jmp,				intr_fn}},
-	{RET,					{ret,					ret,				ret,				intr_fn}},
+	{RET,					{ret,					ret,				ret,				ret}},
 	{CALL,				{call_op,			call_op,		call_op,		intr_fn}},
 	{ASGN, 				{intr_fn,			asgn_op,		asgn_op,		asgn4}},
 	{BOR, 				{intr_fn,			alu,				alu,				alu4}},
