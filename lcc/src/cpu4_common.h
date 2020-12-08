@@ -39,6 +39,12 @@ int get_retaddr_sp_offset();
 #define get_target(x)			(  (x) & 0xff          )
 
 
-#define IADDRL 51
-#define IADDRF 52
-#define IADDRG 53
+#define IADDRL  1
+#define IADDRF  2
+#define IADDRG  3
+#define ASGNL   4
+#define ASGNF   5
+#define ASGNG   6
+#define CALLC   7
+
+extern char * custom_opnames[];

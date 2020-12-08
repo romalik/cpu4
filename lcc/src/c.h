@@ -180,6 +180,8 @@ struct node {
 	int target;
 	int generated;
 	int emitted;
+	int custom_opname;
+	char * custom_data;
  	Symbol syms[3];
 	Node kids[2];
 	Node link;

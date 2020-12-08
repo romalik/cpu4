@@ -115,6 +115,29 @@ void put_reg8_to_target(Node p, char * reg, int high) {
 	}
 }
 
+void put_reg16_to_target(Node p, char * reg) {
+
+	if(is_target_reg(p->target)) {
+    char regl[6];
+    char regh[6];
+
+    if(reg[0] == 'a') {
+      sprintf(regl, "a");
+      sprintf(regh, "b");
+    } else {
+      sprintf(regl, "%sl", reg);
+      sprintf(regh, "%sh", reg);
+    }
+
+    put_reg8_to_target(p, regl, 0);
+    put_reg8_to_target(p, regh, 1);
+	} else if(is_target_spill(p->target)){
+		print("put_rel_sp_w %s %d\n", reg, get_spill_sp_offset(get_target(p->target)*2));
+	} else {
+		assert(0);
+	}
+}
+
 
 void alu(Node p) {
 
@@ -269,6 +292,30 @@ void addrg(Node p) {
 		put_reg8_to_target(p, "b", 1);
 	}
 }
+void iaddrg(Node p) {
+  print("litw x $%s\n", p->custom_data);
+  print("seta m[x]\n");
+
+  if(opsize(p->op) == 2) {
+    print("x++\n");
+    print("setb m[x]\n");
+    put_reg16_to_target(p, "a");
+  } else {
+    put_reg8_to_target(p, "a", 0);
+  }
+}
+void asgng(Node p) {
+  print("litw x $%s\n", p->custom_data);
+  if(opsize(p->op) == 1) {
+    put_kid_to_reg8(p, 1, "a", 0);
+    print("puta m[x]\n");
+  } else if(opsize(p->op) == 2) {
+    put_kid_to_reg16(p, 1, "a");
+    print("puta m[x]\n");
+    print("x++\n");
+    print("putb m[x]\n");
+  }
+}
 
 void addrl(Node p) {
   
@@ -282,15 +329,27 @@ void addrl(Node p) {
   	put_reg8_to_target(p, "b", 1);
 
   }
-
-/*
-	print("lit off %d\n", get_local_sp_offset(calculate_offset_sum(p->syms[0]->x.name)));
-	print("seta sol\n");
-	put_reg8_to_target(p, "a", 0);
-	print("seta soh\n");
-	put_reg8_to_target(p, "a", 1);
-*/
 }
+
+void iaddrl(Node p) {
+  if(opsize(p->op) == 2) {
+    print("get_rel_sp_w a %d\n", get_local_sp_offset(calculate_offset_sum(p->custom_data)));
+    put_reg16_to_target(p, "a");
+  } else {
+    print("get_rel_sp a %d\n", get_local_sp_offset(calculate_offset_sum(p->custom_data)));
+    put_reg8_to_target(p, "a", 0);
+  }
+}
+void asgnl(Node p) {
+  if(opsize(p->op) == 2) {
+    put_kid_to_reg16(p, 1, "a");
+    print("put_rel_sp_w a %d\n", get_local_sp_offset(calculate_offset_sum(p->custom_data)));
+  } else {
+    put_kid_to_reg8(p, 1, "a", 0);
+    print("put_rel_sp a %d\n", get_local_sp_offset(calculate_offset_sum(p->custom_data)));
+  }
+}
+
 
 void addrf(Node p) {
   char * target_reg = get_target_reg_name(p, 0);
@@ -303,14 +362,26 @@ void addrf(Node p) {
   	put_reg8_to_target(p, "b", 1);
 
   }
+}
 
-/*
-	print("lit off %d\n", get_arg_sp_offset(calculate_offset_sum(p->syms[0]->x.name)));
-	print("seta sol\n");
-	put_reg8_to_target(p, "a", 0);
-	print("seta soh\n");
-	put_reg8_to_target(p, "a", 1);
-*/
+void iaddrf(Node p) {
+  if(opsize(p->op) == 2) {
+    print("get_rel_sp_w a %d\n", get_arg_sp_offset(calculate_offset_sum(p->custom_data)));
+    put_reg16_to_target(p, "a");
+  } else {
+    print("get_rel_sp a %d\n", get_arg_sp_offset(calculate_offset_sum(p->custom_data)));
+    put_reg8_to_target(p, "a", 0);
+  }
+}
+
+void asgnf(Node p) {
+  if(opsize(p->op) == 2) {
+    put_kid_to_reg16(p, 1, "a");
+    print("put_rel_sp_w a %d\n", get_arg_sp_offset(calculate_offset_sum(p->custom_data)));
+  } else {
+    put_kid_to_reg8(p, 1, "a", 0);
+    print("put_rel_sp a %d\n", get_arg_sp_offset(calculate_offset_sum(p->custom_data)));
+  }
 }
 
 void label(Node p) {
@@ -476,13 +547,10 @@ void ret(Node p) {
   } else if(opsize(p->op) == 2) {
     if(reg_name_src) {
       reg_name_src[1] = 0;
-  		print("put_rel_sp %sl %d\n", reg_name_src, get_retval_sp_offset());
-  		print("put_rel_sp %sh %d\n", reg_name_src, get_retval_sp_offset()+1);
+  		print("put_rel_sp_w %s %d\n", reg_name_src, get_retval_sp_offset());
     } else {
-      put_kid_to_reg8(p, 0, "a", 0);
-      put_kid_to_reg8(p, 0, "b", 1);
-  		print("put_rel_sp a %d\n", get_retval_sp_offset());
-  		print("put_rel_sp b %d\n", get_retval_sp_offset()+1);
+      put_kid_to_reg16(p, 0, "a");
+  		print("put_rel_sp_w a %d\n", get_retval_sp_offset());
     }
   } else {
     not_implemented()
@@ -525,8 +593,7 @@ void call_op(Node p) {
     reg_name_src[1] = 0;
     pushw(reg_name_src);
   } else {
-    put_kid_to_reg8(p, 0, "a", 0);
-    put_kid_to_reg8(p, 0, "b", 1);
+    put_kid_to_reg16(p, 0, "a");
     pushw("a");
   }
 
@@ -553,32 +620,79 @@ void call_op(Node p) {
         put_reg8_to_target(p, "a", 0);
       } else if(opsize(p->op) == 2) {
         popw("a");
-        put_reg8_to_target(p, "a", 0);
-        put_reg8_to_target(p, "b", 1);
+        put_reg16_to_target(p, "a");
       } else {
         not_implemented()
       }
     }
 
     print("adjust_sp s %d\n", total_arg_size);
-  /*
-    print("; create instruction for this !\n");
-    print("lit off %d\n", total_arg_size);
-    print("seta sol\n");
-    print("setb soh\n");
-    print("puta sl\n");
-    print("putb sh\n");
-    print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
-  */
     current_sp_offset -= total_arg_size;
   } else {
     //unused retval 
     //discard it
     print("adjust_sp s %d\n", total_arg_size+opsize(p->op));
     current_sp_offset -= (total_arg_size+opsize(p->op));
-
   }
 }
+
+void callc(Node p) {
+  char * reg_name_target;
+  int total_arg_size = 0;
+  int i;
+
+  for (i = 0; i < 15; i++) {
+    assert(p->args);
+    if (!p->args[i])
+      break;
+    total_arg_size += (opsize(p->args[i]->op));
+  }
+
+  print("; reserve retval\n");
+  for(i = 0; i<(opsize(p->op)); i++) {
+    print("s--\n");
+    current_sp_offset++;
+  }
+
+  print("call $%s\n", p->custom_data);
+
+  if(is_target(p->target)) {
+    reg_name_target = get_target_reg_name(p, 0);
+
+    if(reg_name_target) {
+      if(opsize(p->op) == 0) {
+      } else if(opsize(p->op) == 1) {
+        pop(reg_name_target);
+      } else if(opsize(p->op) == 2) {
+        reg_name_target[1] = 0;
+        popw(reg_name_target);
+      } else {
+        not_implemented()
+      }
+    } else {
+      if(opsize(p->op) == 0) {
+      } else if(opsize(p->op) == 1) {
+        pop("a");
+        put_reg8_to_target(p, "a", 0);
+      } else if(opsize(p->op) == 2) {
+        popw("a");
+        put_reg16_to_target(p, "a");
+      } else {
+        not_implemented()
+      }
+    }
+
+    print("adjust_sp s %d\n", total_arg_size);
+    current_sp_offset -= total_arg_size;
+  } else {
+    //unused retval 
+    //discard it
+    print("adjust_sp s %d\n", total_arg_size+opsize(p->op));
+    current_sp_offset -= (total_arg_size+opsize(p->op));
+  }
+}
+
+
 
 void asgn_op(Node p) {
   char * reg_name_addr;

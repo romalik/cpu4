@@ -37,3 +37,11 @@ void shr(Node);
 void intr_fn(Node);
 
 void nop(Node);
+
+void iaddrf(Node);
+void iaddrg(Node);
+void iaddrl(Node);
+void asgnl(Node);
+void asgnf(Node);
+void asgng(Node);
+void callc(Node);

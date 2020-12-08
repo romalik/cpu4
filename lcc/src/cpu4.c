@@ -277,7 +277,18 @@ struct op_processors {
 	void (*fn[4])(Node p);
 };
 
+struct op_processors custom_procs[] = {
+//name	sz:	 		0			 				1			 			2						4
+	{IADDRL,				{intr_fn,			iaddrl,		iaddrl,		intr_fn}},
+	{IADDRF, 				{intr_fn,			iaddrf,		iaddrf,		intr_fn}},
+	{IADDRG,				{intr_fn,			iaddrg,		iaddrg,		intr_fn}},
+	{ASGNL, 				{intr_fn,			asgnl,		asgnl,		intr_fn}},
+	{ASGNF, 				{intr_fn,			asgnf,		asgnf,		intr_fn}},
+	{ASGNG, 				{intr_fn,			asgng,		asgng,		intr_fn}},
+	{CALLC,					{callc,				callc,		callc,		intr_fn}},
 
+	{0,				{0,0,0,0}},
+};
 
 struct op_processors procs[] = {
 //name	sz:	 		0			 				1			 			2						4
@@ -323,6 +334,7 @@ struct op_processors procs[] = {
 static void dump_op(int generic_op, Node p) {
 	int i = 0;
 	int sz;
+	struct op_processors * pr_list;
 	switch(opsize(p->op)) {
 		case 0:
 			sz = 0;
@@ -337,30 +349,89 @@ static void dump_op(int generic_op, Node p) {
 			sz = 3;
 		break;
 	}
+
+	if(p->custom_opname) {
+		pr_list = custom_procs;
+		generic_op = p->custom_opname;
+	} else {
+		pr_list = procs;
+	}
+
 	while(1) {
-		if(procs[i].generic_op == 0) {
+		if(pr_list[i].generic_op == 0) {
 			fprintf(stderr, "WTF %s\n", opname(generic_op));
 			assert(0);
 		}
-		if(procs[i].generic_op == generic_op) {
-			procs[i].fn[sz](p);
+		if(pr_list[i].generic_op == generic_op) {
+			pr_list[i].fn[sz](p);
 			return;
 		}
 		i++;
 	}
 }
 
+char * custom_opnames[] = {
+	"",
+	"IADDRL",
+	"IADDRF",
+	"IADDRG",
+	"ASGNL",
+	"ASGNF",
+	"ASGNG",
+	"CALLC"
+};
 
 void optimize_node(Node p) {
-	return;
+	
+	if(p->custom_opname) return;
+
+
 	if(generic(p->op) == INDIR) {
-		fprintf(stderr, "found indir\n");
+		if(p->kids[0]->custom_opname) return;
+
 		if(generic(p->kids[0]->op) == ADDRL) {
-			fprintf(stderr, "found addrl\n");
-			p->op = (IADDRL << 8);
-			p->kids[0] = NULL;
+			p->custom_opname = IADDRL;
+			p->custom_data = p->kids[0]->syms[0]->x.name;
+			p->kids[0] = 0;
+		} else if(generic(p->kids[0]->op) == ADDRF) {
+			p->custom_opname = IADDRF;
+			p->custom_data = p->kids[0]->syms[0]->x.name;
+			p->kids[0] = 0;
+		} else if(generic(p->kids[0]->op) == ADDRG) {
+			p->custom_opname = IADDRG;
+			p->custom_data = p->kids[0]->syms[0]->x.name;
+			p->kids[0] = 0;
 		}
 	}
+	
+	if(generic(p->op) == ASGN) {
+		if(p->kids[0]->custom_opname) return;
+
+		if(generic(p->kids[0]->op) == ADDRL) {
+			p->custom_opname = ASGNL;
+			p->custom_data = p->kids[0]->syms[0]->x.name;
+			p->kids[0] = 0;
+		} else if(generic(p->kids[0]->op) == ADDRF) {
+			p->custom_opname = ASGNF;
+			p->custom_data = p->kids[0]->syms[0]->x.name;
+			p->kids[0] = 0;
+		} else if(generic(p->kids[0]->op) == ADDRG) {
+			p->custom_opname = ASGNG;
+			p->custom_data = p->kids[0]->syms[0]->x.name;
+			p->kids[0] = 0;
+		}
+	}
+
+	if(generic(p->op) == CALL) {
+		if(p->kids[0]->custom_opname) return;
+
+		if(generic(p->kids[0]->op) == ADDRG) {
+			p->custom_opname = CALLC;
+			p->custom_data = p->kids[0]->syms[0]->x.name;
+			p->kids[0] = 0;
+		}
+	}
+
 }
 
 
@@ -387,7 +458,7 @@ static void dumptree_dbg(Node p)
 
 	print("-> %s%s %s count: %d depth: %d target: %s %d\n",
 				p->emitted?"[EMITTED PREVIOUSLY] ":"",
-				opname(p->op), 
+				p->custom_opname?custom_opnames[p->custom_opname]:opname(p->op), 
 				(p->syms) ? ((p->syms[0]) ? (p->syms[0]->x.name ? p->syms[0]->x.name : "") : ("")) : "", 
 				p->count,
 				p->depth,
@@ -460,7 +531,8 @@ void dumptree(Node p)
 
 	print("\n; -> %s%s (%s) count: %d depth: %d target: %s %d\n",
 				p->emitted?"[EMITTED PREVIOUSLY] ":"",
-				opname(p->op), (p->syms) ? ((p->syms[0]) ? (p->syms[0]->x.name ? p->syms[0]->x.name : "") : ("")) : "", 
+				p->custom_opname?custom_opnames[p->custom_opname]:opname(p->op), 
+				(p->syms) ? ((p->syms[0]) ? (p->syms[0]->x.name ? p->syms[0]->x.name : "") : ("")) : "", 
 				p->count,
 				p->depth,
 				target_type,
