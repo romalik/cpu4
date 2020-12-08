@@ -174,7 +174,8 @@ char *opname(int op) {
 	"OR",
 	"COND",
 	"RIGHT",
-	"FIELD"
+	"FIELD",
+	"IADDRL" //44
 	}, *suffixes[] = {
 		"0", "F", "D", "C", "S", "I", "U", "P", "V", "B",
 		"10","11","12","13","14","15"

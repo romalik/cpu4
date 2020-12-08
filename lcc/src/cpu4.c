@@ -351,6 +351,19 @@ static void dump_op(int generic_op, Node p) {
 }
 
 
+void optimize_node(Node p) {
+	return;
+	if(generic(p->op) == INDIR) {
+		fprintf(stderr, "found indir\n");
+		if(generic(p->kids[0]->op) == ADDRL) {
+			fprintf(stderr, "found addrl\n");
+			p->op = (IADDRL << 8);
+			p->kids[0] = NULL;
+		}
+	}
+}
+
+
 int ident = 0;
 int print_tree = 0;
 
@@ -359,6 +372,8 @@ static void dumptree_dbg(Node p)
 {
 	int i;
 	char * target_type;
+
+	optimize_node(p);
 
 	if(!is_target(p->target)) {
 		target_type = "NO TARGET";
@@ -428,7 +443,8 @@ void dumptree(Node p)
 		}
 	}
 
-	
+	optimize_node(p);
+
 	if (p->kids[0])
 		dumptree(p->kids[0]);
 	if (p->kids[1])
@@ -608,6 +624,8 @@ static void gen02(Node p)
 	}
 }
 
+
+
 static void gen_node(Node p, int * depth, unsigned int target)
 {
 	int i;
@@ -632,6 +650,7 @@ static void gen_node(Node p, int * depth, unsigned int target)
 	//calculate_depth
 	if (p)
 	{
+
 		switch(generic(p->op)) {
 			case ADD:
 			case SUB:
@@ -700,15 +719,19 @@ static void gen_node(Node p, int * depth, unsigned int target)
 		}
 
 		ident-=3;
-		if(is_target_spill(target_kid_0)) {
-			if(!kid_0_result_preserved) {
-				free_spill(get_target(target_kid_0));
+		if(p->kids[0]) {
+			if(is_target_spill(p->kids[0]->target)) {
+				if(!kid_0_result_preserved) {
+					free_spill(get_target(p->kids[0]->target));
+				}
 			}
 		}
 
-		if(is_target_spill(target_kid_1)) {
-			if(!kid_1_result_preserved) {
-				free_spill(get_target(target_kid_1));
+		if(p->kids[1]) {
+			if(is_target_spill(p->kids[1]->target)) {
+				if(!kid_1_result_preserved) {
+					free_spill(get_target(p->kids[1]->target));
+				}
 			}
 		}
 

@@ -38,10 +38,10 @@ section control_word
 24  H       seq_rst
 25  H       ext_rst
 26  H       ext_set
-27  H       ei
-28  H       di
-29  H       mmu_on
-30  H       mmu_off
+27  H       ei	#combine with "reset selected"?
+28  H       di  #possibly free
+29  H       mmu_on #mmu_on with "reset selected" to switch off, and without - to switch on?
+30  H       mmu_off #possibly free
 31  H       ds #data segment?
 
 32  L       s++
@@ -51,16 +51,16 @@ section control_word
 36  L       y++
 37  L       y--
 38  L       p++
-39  L       reserve_1 # was off++
+39  L       reserve_1 # was off++ , use for accessing mmu tlb (like cs/ds selector)?
 
 40  L       tl_read
 41  L       tl_write
 42  L       th_read
 43  L       th_write
-44  H       s_reset
-45  H       p_reset #??? what is it?
-46  H       user_mode
-47  H       super_mode
+44  H       s_reset #combine two by resetting reg, that is being read, make this "reset selected"
+45  H       p_reset #use this for syscall?
+46  H       user_mode #combine with "reset selected?"
+47  H       super_mode #possibly free
 
 end
 

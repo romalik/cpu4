@@ -38,3 +38,7 @@ int get_retaddr_sp_offset();
 #define is_target(x) 		 	(  (x) & BIT_ISTARGET  )   
 #define get_target(x)			(  (x) & 0xff          )
 
+
+#define IADDRL 51
+#define IADDRF 52
+#define IADDRG 53
