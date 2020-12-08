@@ -319,7 +319,7 @@ static int printi(char **out, int i, int b, int sg, int width, int pad,
 
     return pc + prints(out, s, width, pad);
 }
-/*
+
 static int printl(char **out, long i, int b, int sg, int width, int pad,
                   int letbase) {
     char *s;
@@ -371,7 +371,7 @@ static int printl(char **out, long i, int b, int sg, int width, int pad,
 
     return pc + prints(out, s, width, pad);
 }
-*/
+
 static int print(char **out, int *varg) {
     char scr[2];
     int width, pad;
@@ -418,13 +418,11 @@ static int print(char **out, int *varg) {
                 pc += printi(out, *varg++, 10, 0, width, pad, 'a');
                 continue;
             }
-            /*
             if (*format == 'l') {
-                pc += printi(out, *varg++, 10, 1, width, pad, 'a');
+                pc += printl(out, *varg++, 10, 1, width, pad, 'a');
                 varg++;
                 continue;
             }
-            */
             if (*format == 'c') {
                 /* char are converted to int then pushed on the stack */
                 scr[0] = *varg++;

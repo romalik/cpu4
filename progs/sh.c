@@ -85,7 +85,7 @@ int main() {
 
    printf("45*30 = %d (=1350)\n", a*b);
 
-//   printf("long: %l\n", long_var);
+   printf("long: %l\n", long_var);
 
    while(1) {
       puts("> ");
