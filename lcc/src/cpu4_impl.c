@@ -860,8 +860,11 @@ void callc(Node p) {
       } else if(opsize(p->op) == 2) {
         popw("a");
         put_reg16_to_target(p, "a");
-      } else {
-        not_implemented()
+      } else if(opsize(p->op) == 4) {
+        popw("a");
+        print("put_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->target)*2));
+        popw("a");
+        print("put_rel_sp_w a %d\n", get_spill_sp_offset(get_target(p->target)*2) + 2);      } else {
       }
     }
 

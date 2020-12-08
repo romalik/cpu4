@@ -479,5 +479,9 @@ long __crt_MODU4(long a, long b) {
 }
 
 long __crt_DIVU4(long a, long b) {
+    return 0;
+}
+
+long __crt_MULI4(long a, long b) {
     return 1;
 }

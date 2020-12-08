@@ -59,20 +59,24 @@ char * aaa = "blah blah\n";
 
 char buffer[30];
 
-extern int __crt_MULI2(int,int);
 
 int main() {
    char c;
    char * tstr = "blah";
    int cmd_idx;
    long long_var = 1201799;
+   long long_var2 = 1234;
+   long long_var3 = 0;
    int a = 3;
    int b = 2;
    int d = 0;
    char c1 = 5;
    char c2 = 10;
 
+
    printf("print test (12 23 34 'a' 'b' 'c' 0x3f 0x5c 'blah')%d %d %d %c %c %c 0x%02x 0x%02x '%s'\n", 12,23,34,'a','b','c',0x3f,0x5c,tstr);
+
+
 
 
    a = 1231;

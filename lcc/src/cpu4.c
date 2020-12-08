@@ -270,7 +270,7 @@ struct op_processors custom_procs[] = {
 	{ASGNL, 				{intr_fn,			asgnl,		asgnl,		intr_fn}},
 	{ASGNF, 				{intr_fn,			asgnf,		asgnf,		intr_fn}},
 	{ASGNG, 				{intr_fn,			asgng,		asgng,		intr_fn}},
-	{CALLC,					{callc,				callc,		callc,		intr_fn}},
+	{CALLC,					{callc,				callc,		callc,		callc}},
 	{JMPC, 					{jmpc,				intr_fn,	jmpc,			intr_fn}},
 
 	{0,				{0,0,0,0}},
@@ -371,9 +371,9 @@ char * custom_opnames[] = {
 void optimize_node(Node p) {
 	
 	if(p->custom_opname) return;
-	if(opsize(p->op) > 2) return;
 
 	if(generic(p->op) == INDIR) {
+		if(opsize(p->op) > 2) return;
 		if(p->kids[0]->custom_opname) return;
 
 		if(generic(p->kids[0]->op) == ADDRL) {
@@ -392,6 +392,7 @@ void optimize_node(Node p) {
 	}
 	
 	if(generic(p->op) == ASGN) {
+		if(opsize(p->op) > 2) return;
 		if(p->kids[0]->custom_opname) return;
 
 		if(generic(p->kids[0]->op) == ADDRL) {
@@ -711,6 +712,10 @@ static void gen_node(Node p, int * depth, unsigned int target)
 	int kid_0_result_preserved = 0;
 	int kid_1_result_preserved = 0;
 
+	int kid_0_long = 0;
+	int kid_1_long = 0;
+	int target_long = 0;
+
 	if(p->generated) {
 #if debug_all
 			for(i = 0; i<ident; i++) print(" "); printf("(-) node [%p] %s already generated\n", p->kids[0], opname(p->kids[0]->op));
@@ -802,9 +807,20 @@ static void gen_node(Node p, int * depth, unsigned int target)
 
 		ident-=3;
 		if(p->kids[0]) {
+			kid_0_long = (opsize(p->kids[0]->op) > 2)?1:0;
+		}
+
+		if(p->kids[1]) {
+			kid_1_long = (opsize(p->kids[1]->op) > 2)?1:0;
+		}
+
+		target_long = (opsize(p->op) > 2)?1:0;
+
+
+		if(p->kids[0]) {
 			if(is_target_spill(p->kids[0]->target)) {
 				if(!kid_0_result_preserved) {
-					if(opsize(p->kids[0]->op) > 2) {
+					if(kid_0_long) {
 						free_spill(get_target(p->kids[0]->target),2);
 					} else {
 						free_spill(get_target(p->kids[0]->target),1);
@@ -816,7 +832,7 @@ static void gen_node(Node p, int * depth, unsigned int target)
 		if(p->kids[1]) {
 			if(is_target_spill(p->kids[1]->target)) {
 				if(!kid_1_result_preserved) {
-					if(opsize(p->kids[1]->op) > 2) {
+					if(kid_1_long) {
 						free_spill(get_target(p->kids[1]->target),2);
 					} else {
 						free_spill(get_target(p->kids[1]->target),1);
@@ -851,13 +867,13 @@ static void gen_node(Node p, int * depth, unsigned int target)
 		p->target = target;
 
 		if(is_target_spill(target_kid_0)) {
-			if(n_spill < get_target(target_kid_0) + 1) n_spill = get_target(target_kid_0) + 1;
+			if(n_spill < get_target(target_kid_0) + 1 + kid_0_long) n_spill = get_target(target_kid_0) + 1 + kid_0_long;
 		}
 		if(is_target_spill(target_kid_1)) {
-			if(n_spill < get_target(target_kid_1) + 1) n_spill = get_target(target_kid_1) + 1;
+			if(n_spill < get_target(target_kid_1) + 1 + kid_1_long) n_spill = get_target(target_kid_1) + 1 + kid_1_long;
 		}
 		if(is_target_spill(target)) {
-			if(n_spill < get_target(target) + 1) n_spill = get_target(target) + 1;
+			if(n_spill < get_target(target) + 1 + target_long) n_spill = get_target(target) + 1 + target_long;
 		}
 
 		p->generated = 1;
@@ -1052,7 +1068,7 @@ Interface cpu4_treeIR = {
 		I(address),
 		I(blockbeg),
 		I(blockend),
-		0,//I(asmcode),
+		I(asmcode),
 		I(defaddress),
 		I(defconst),
 		I(defstring),
