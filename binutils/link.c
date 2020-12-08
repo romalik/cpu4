@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include "robj.h"
 
-#define MAXFILES 10
+#define MAXFILES 1000
 
 static uint8_t * images[MAXFILES];
 static uint16_t image_sizes[MAXFILES];

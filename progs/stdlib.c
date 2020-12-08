@@ -126,7 +126,7 @@ int memset(unsigned int *dest, const unsigned int val, int n) {
     }
     return n;
 }
-/*
+
 int memcpy(unsigned int *dest, const unsigned int *src, int n) {
     int k = n;
     while (k--) {
@@ -146,7 +146,7 @@ int memcpy_r(unsigned int *dest, const unsigned int *src, int n) {
     }
     return n;
 }
-*/
+
 int memcmp(const void *mem1, const void *mem2, int len)
 {
         const signed char *p1 = mem1, *p2 = mem2;

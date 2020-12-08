@@ -45,3 +45,4 @@ void asgnl(Node);
 void asgnf(Node);
 void asgng(Node);
 void callc(Node);
+void jmpc(Node);

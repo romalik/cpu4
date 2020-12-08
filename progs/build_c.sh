@@ -8,10 +8,8 @@ set -x
 ../lcc/build/cpp stdlib.c > stdlib.i || exit
 ../lcc/build/rcc -target=cpu4 stdlib.i > stdlib.s || exit
 ../binutils/cpu4as $1.s $1.o || exit
-../binutils/cpu4as crt0.s crt0.o || exit
-../binutils/cpu4as crt1.s crt1.o || exit
 ../binutils/cpu4as stdlib.s stdlib.o || exit
-../binutils/cpu4ld -o $1.bin crt0.o crt1.o stdlib.o $1.o  || exit
+../binutils/cpu4ld -o $1.bin ../binutils/crt0.o ../binutils/crt1.o stdlib.o $1.o  || exit
  
 #rm $1.i $1.s $1.o stdlib.i stdlib.o crt0.o crt1.o
 

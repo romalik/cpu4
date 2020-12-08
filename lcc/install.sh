@@ -1,3 +1,3 @@
 #!/bin/sh
-mkdir -p /usr/local/rl_cpu/bin
-cp ./build/cpp ./build/rcc ./build/lcc /usr/local/rl_cpu/bin/
+mkdir -p /opt/cpu4/bin
+cp ./build/cpp ./build/rcc ./build/lcc /opt/cpu4/bin/

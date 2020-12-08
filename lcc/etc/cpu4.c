@@ -22,13 +22,11 @@ char *com[] = { LCCDIR "rcc", "-target=cpu4",
    "$1", "$2", "$3", 0 };
 char *as[] = { LCCDIR "cpu4as", "$1", "$2", "$3", 0 };
 
-char kernbeg[] = LCCLIBDIR"kernbeg.o";
-char userbeg[] = LCCLIBDIR"progbeg.o";
+char obj_begin[] = LCCLIBDIR"crt0.o";
 
-char kernend[] = LCCLIBDIR"kernend.o";
-char userend[] = LCCLIBDIR"progend.o";
+char obj_end[] = LCCLIBDIR"crt_end.o";
 
-char *ld[] = { LCCDIR "cpu4ld", "-o", "$3", userbeg, LCCLIBDIR "rt.o", LCCLIBDIR "math.o", "$1", "$2", userend, 0};
+char *ld[] = { LCCDIR "cpu4ld", "-o", "$3", obj_begin, LCCLIBDIR "crt1.o", "$1", "$2", /*obj_end,*/ 0};
 
 
 
@@ -44,8 +42,8 @@ int option(char *arg) {
    else if (strncmp(arg, "-ld=", 4) == 0)
        ld[0] = &arg[4];
    else if (strncmp(arg, "-kernel", 7) == 0) {
-       ld[3] = kernbeg;
-       ld[8] = kernend;
+       //ld[3] = kernbeg;
+       //ld[8] = kernend;
    } else
        return 0;
    return 1;

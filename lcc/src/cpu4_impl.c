@@ -269,8 +269,7 @@ void cnst(Node p) {
 			print("litw %c %s\n", reg_name[0], p->syms[0]->x.name);
 		} else {
 			print("litw a %s\n", p->syms[0]->x.name);
-			put_reg8_to_target(p, "a", 0);
-			put_reg8_to_target(p, "b", 1);
+			put_reg16_to_target(p, "a");
 		}
 	}
 	else
@@ -288,8 +287,7 @@ void addrg(Node p) {
 		print("litw %c $%s\n", reg_name[0], p->syms[0]->x.name);
 	} else {
 		print("litw a $%s\n", p->syms[0]->x.name);
-		put_reg8_to_target(p, "a", 0);
-		put_reg8_to_target(p, "b", 1);
+		put_reg16_to_target(p, "a");
 	}
 }
 void iaddrg(Node p) {
@@ -325,8 +323,7 @@ void addrl(Node p) {
   	print("adjust_sp %s %d\n", target_reg, get_local_sp_offset(calculate_offset_sum(p->syms[0]->x.name)));
   } else {
   	print("adjust_sp a %d\n", get_local_sp_offset(calculate_offset_sum(p->syms[0]->x.name)));
-  	put_reg8_to_target(p, "a", 0);
-  	put_reg8_to_target(p, "b", 1);
+  	put_reg16_to_target(p, "a");
 
   }
 }
@@ -358,8 +355,7 @@ void addrf(Node p) {
   	print("adjust_sp %s %d\n", target_reg, get_arg_sp_offset(calculate_offset_sum(p->syms[0]->x.name)));
   } else {
   	print("adjust_sp a %d\n", get_arg_sp_offset(calculate_offset_sum(p->syms[0]->x.name)));
-  	put_reg8_to_target(p, "a", 0);
-  	put_reg8_to_target(p, "b", 1);
+  	put_reg16_to_target(p, "a");
 
   }
 }
@@ -451,10 +447,8 @@ void cv(Node p) {
 			if(p->kids[0]->target == p->target) {
 				print("; bypass conversion sz1-sz1\n");
 			} else {
-        put_kid_to_reg8(p, 0, "a", 0);
-        put_kid_to_reg8(p, 0, "b", 1);
-        put_reg8_to_target(p, "a", 0);
-        put_reg8_to_target(p, "b", 1);
+        put_kid_to_reg16(p, 0, "a");
+        put_reg16_to_target(p, "a");
 			}
 		}
 		else {
@@ -481,8 +475,7 @@ void arg(Node p) {
       reg_name_src[1] = 0;
       pushw(reg_name_src);
     } else {
-      put_kid_to_reg8(p, 0, "a", 0);
-      put_kid_to_reg8(p, 0, "b", 1);
+      put_kid_to_reg16(p, 0, "a");
       pushw("a");
     }
   } else {
@@ -523,13 +516,16 @@ void jmp(Node p) {
     reg_name_src[1] = 0;
     pushw(reg_name_src);
   } else {
-    put_kid_to_reg8(p, 0, "a", 0);
-    put_kid_to_reg8(p, 0, "b", 1);
+    put_kid_to_reg16(p, 0, "a");
     pushw("a");
   }
 
   print("jmps\n");
   current_sp_offset -= 2;
+}
+
+void jmpc(Node p) {
+  print("jmp $%s\n", p->custom_data);
 }
 
 void ret(Node p) {
@@ -707,8 +703,7 @@ void asgn_op(Node p) {
     sprintf(reg_mem, "m[%s]", reg_name_addr);
     put_kid_to_reg8(p, 1, reg_mem, 0);
   } else {
-    put_kid_to_reg8(p, 0, "xl", 0);
-    put_kid_to_reg8(p, 0, "xh", 1);
+    put_kid_to_reg16(p, 0, "x");
     put_kid_to_reg8(p, 1, "m[x]", 0);
   }
 
@@ -945,16 +940,14 @@ void intr_fn(Node p) {
   } else if(opsize(p->op) == 2) {
     if(p->kids[0]) {
       if(is_target_spill(p->kids[0]->target)) {
-        put_kid_to_reg8(p, 0, "xl", 0);        
-        put_kid_to_reg8(p, 0, "xh", 1);        
+        put_kid_to_reg16(p, 0, "x");        
       }
       pushw("x");
       args_sz+=2;
     }
     if(p->kids[1]) {
       if(is_target_spill(p->kids[1]->target)) {
-        put_kid_to_reg8(p, 0, "yl", 0);        
-        put_kid_to_reg8(p, 0, "yh", 1);        
+        put_kid_to_reg16(p, 0, "y");        
       }
       pushw("y");
       args_sz+=2;
@@ -989,23 +982,11 @@ void intr_fn(Node p) {
       put_reg8_to_target(p, "a", 0);
     } else if(opsize(p->op) == 2) {
       popw("a");
-      put_reg8_to_target(p, "a", 0);
-      put_reg8_to_target(p, "b", 1);
+      put_reg16_to_target(p, "a");
     } else {
       not_implemented()
     }
   }
-
-/*
-  print("; create instruction for this !\n");
-	print("lit off %d\n", args_sz);
-	print("seta sol\n");
-  print("setb soh\n");
-  print("puta sl\n");
-  print("putb sh\n");
-  print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
-*/
-
 	print("adjust_sp s %d\n", args_sz);
 
   current_sp_offset -= args_sz;

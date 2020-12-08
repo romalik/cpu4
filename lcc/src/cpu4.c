@@ -71,39 +71,16 @@ static void I(defaddress)(Symbol p)
 
 static void I(defconst)(int suffix, int size, Value v)
 {
-	switch (suffix)
-	{
-	case I:
-		if (size > sizeof(int))
-			print("byte %d %D\n", size, v.i);
-		else
-			print("byte %d %d\n", size, v.i);
-		return;
-	case U:
-		if (size > sizeof(unsigned))
-			print("byte %d %U\n", size, v.u);
-		else
-			print("byte %d %u\n", size, v.u);
-		return;
-	case P:
-		print("byte %d %U\n", size, (unsigned long)v.p);
-		return;
-	case F:
-		if (size == 4)
-		{
-			float f = v.d;
-			print("byte 4 %u\n", *(unsigned *)&f);
-		}
-		else
-		{
-			double d = v.d;
-			unsigned *p = (unsigned *)&d;
-			print("byte 4 %u\n", p[swap]);
-			print("byte 4 %u\n", p[1 - swap]);
-		}
-		return;
+
+	if(size == 1) {
+			print(".byte %d\n", v.i);
+	} else if(size == 2) {
+			print(".word %d\n", v.i);
+	} else {
+		fprintf(stderr, "defconst of size > 2\n");
+		assert(0);
 	}
-	assert(0);
+
 }
 
 static void I(defstring)(int len, char *str)
@@ -286,6 +263,7 @@ struct op_processors custom_procs[] = {
 	{ASGNF, 				{intr_fn,			asgnf,		asgnf,		intr_fn}},
 	{ASGNG, 				{intr_fn,			asgng,		asgng,		intr_fn}},
 	{CALLC,					{callc,				callc,		callc,		intr_fn}},
+	{JMPC, 					{jmpc,				intr_fn,	jmpc,			intr_fn}},
 
 	{0,				{0,0,0,0}},
 };
@@ -378,7 +356,8 @@ char * custom_opnames[] = {
 	"ASGNL",
 	"ASGNF",
 	"ASGNG",
-	"CALLC"
+	"CALLC",
+	"JMPC"
 };
 
 void optimize_node(Node p) {
@@ -427,6 +406,16 @@ void optimize_node(Node p) {
 
 		if(generic(p->kids[0]->op) == ADDRG) {
 			p->custom_opname = CALLC;
+			p->custom_data = p->kids[0]->syms[0]->x.name;
+			p->kids[0] = 0;
+		}
+	}
+
+	if(generic(p->op) == JUMP) {
+		if(p->kids[0]->custom_opname) return;
+
+		if(generic(p->kids[0]->op) == ADDRG) {
+			p->custom_opname = JMPC;
 			p->custom_data = p->kids[0]->syms[0]->x.name;
 			p->kids[0] = 0;
 		}

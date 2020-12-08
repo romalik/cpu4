@@ -46,5 +46,6 @@ int get_retaddr_sp_offset();
 #define ASGNF   5
 #define ASGNG   6
 #define CALLC   7
+#define JMPC    8
 
 extern char * custom_opnames[];
