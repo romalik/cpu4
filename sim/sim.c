@@ -723,10 +723,20 @@ void op_sim_halt() {
 
 void print_state();
 
+void print_stack(int);
+
 void op_sim_info() {
+  int soff;
   printf(">>>>> SIM INFO %d!\n", mem_read(val16(r.p)));
   if(mem_read(val16(r.p)) == 255) { fl_debug = 1; }
   if(mem_read(val16(r.p)) == 254) { fl_debug = 0; }
+
+  if(mem_read(val16(r.p)) == 100) {
+    for(soff = 30; soff > 0; soff--) {
+      print_stack(soff);printf("\n");
+    }
+  }
+
   print_state();
   inc16(r.p);  
   r.sect = 0;

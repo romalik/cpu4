@@ -419,7 +419,12 @@ static int print(char **out, int *varg) {
                 continue;
             }
             if (*format == 'l') {
-                pc += printl(out, *varg++, 10, 1, width, pad, 'a');
+                if (*(format+1) == 'x') {
+                    format++;
+                    pc += printl(out, *varg++, 16, 0, width, pad, 'a');
+                } else {
+                    pc += printl(out, *varg++, 10, 1, width, pad, 'a');
+                }
                 varg++;
                 continue;
             }
@@ -453,35 +458,3 @@ int sprintf(char *out, const char *format, ...) {
     return print(&out, varg);
 }
 
-
-
-int multiply16bit(int m, int n)
-{
-    unsigned char mLow = (m & 0x00FF);          // stores first 8-bits of m
-    unsigned char mHigh = (m & 0xFF00) >> 8;    // stores last 8-bits of m
- 
-    unsigned char nLow = (n & 0x00FF);          // stores first 8-bits of n
-    unsigned char nHigh = (n & 0xFF00) >> 8;    // stores last 8-bits of n
- 
-    unsigned short mLow_nLow = mLow * nLow;
-    unsigned short mHigh_nLow = mHigh * nLow;
-    unsigned short mLow_nHigh = mLow * nHigh;
-    unsigned short mHigh_nHigh = mHigh * nHigh;
- 
-    // return 32-bit result (don't forget to shift mHigh_nLow and
-    // mLow_nHigh by 1 byte and mHigh_nHigh by 2 bytes)
- 
-    return mLow_nLow + ((mHigh_nLow + mLow_nHigh) << 8) + (mHigh_nHigh << 16);
-}
-
-long __crt_MODU4(long a, long b) {
-    return 1;
-}
-
-long __crt_DIVU4(long a, long b) {
-    return 0;
-}
-
-long __crt_MULI4(long a, long b) {
-    return 1;
-}

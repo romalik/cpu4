@@ -64,9 +64,9 @@ int main() {
    char c;
    char * tstr = "blah";
    int cmd_idx;
-   long long_var = 1201799;
+   long long_var = 1; //11*12*13*14*15*16*17
    long long_var2 = 1234;
-   long long_var3 = 0;
+   long long_var3 = 10;
    int a = 3;
    int b = 2;
    int d = 0;
@@ -89,7 +89,28 @@ int main() {
 
    printf("45*30 = %d (=1350)\n", a*b);
 
-   printf("long: %l\n", long_var);
+   long_var = long_var*11;
+   long_var = long_var*12;
+   long_var = long_var*13;
+   long_var = long_var*14;
+   long_var = long_var*15;
+   long_var = long_var*16;
+   long_var = long_var*17;
+
+   long_var = long_var / 17;
+   printf("long: %lx\n", long_var);
+   long_var = long_var / 16;
+   printf("long: %lx\n", long_var);
+   long_var = long_var / 15;
+   printf("long: %lx\n", long_var);
+   long_var = long_var / 14;
+   printf("long: %lx\n", long_var);
+   long_var = long_var / 13;
+   printf("long: %lx\n", long_var);
+   long_var = long_var / 12;
+   printf("long: %lx\n", long_var);
+   long_var = long_var / 11;
+   printf("long: %lx\n", long_var);
 
    while(1) {
       puts("> ");
