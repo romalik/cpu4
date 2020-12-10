@@ -17,13 +17,16 @@
 uint16_t current_pos = 0;
 
 char image[65535];
-char label_vec[65535];
-char label_usage_list[65535];
+char label_vec[65535*16];
+char label_usage_list[65535*16];
 
 void emit(uint8_t opcode) {
   //printf("put 0x%02x at 0x%04x\n", opcode, current_pos);
   image[current_pos] = opcode;
   current_pos++;
+  if(current_pos > 65534) {
+    panic("Image overflow!\n");
+  }
 }
 
 char expect_arg_n = 0;
@@ -455,6 +458,8 @@ int main(int argc, char ** argv) {
   set_label_usage_list(label_usage_list);
 
   assemble();
+
+  printf("size: %d\n", current_pos);
 
   //print_labels(label_vec);
   //print_label_usage(get_label_usage_list_size());
