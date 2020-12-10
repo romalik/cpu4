@@ -59,14 +59,23 @@ char * aaa = "blah blah\n";
 
 char buffer[30];
 
+void dump(void * start, int sz) {
+   int i;
+   char * data = (char *)start;
+   for(i = 0; i<sz; i++) {
+      printf("0x%04x: 0x%02x\n", (unsigned int)data, *data);
+      data++;
+   }
+}
 
 int main() {
    char c;
    char * tstr = "blah";
    int cmd_idx;
-   long long_var = 1; //11*12*13*14*15*16*17
-   long long_var2 = 1234;
-   long long_var3 = 10;
+   long long_var = 98017920;
+   long long_var2 = -1024;
+   long long_var3 = 1024;
+   long long_var4 = 512;
    int a = 3;
    int b = 2;
    int d = 0;
@@ -80,37 +89,72 @@ int main() {
 
 
    a = 1231;
-   b = 38;
+   b = 18;
 
    printf("1231*18 = %d (=22158)\n", a*b);
+
+   a = -1231;
+   b = 18;
+
+   printf("-1231*18 = %d (=22158)\n", a*b);
+
+   a = 1231;
+   b = -18;
+
+   printf("1231*-18 = %d (=22158)\n", a*b);
+
+   a = -1231;
+   b = -18;
+
+   printf("-1231*-18 = %d (=22158)\n", a*b);
 
    a = 45;
    b = 30;
 
    printf("45*30 = %d (=1350)\n", a*b);
 
-   long_var = long_var*11;
-   long_var = long_var*12;
-   long_var = long_var*13;
-   long_var = long_var*14;
-   long_var = long_var*15;
-   long_var = long_var*16;
-   long_var = long_var*17;
 
-   long_var = long_var / 17;
-   printf("long: %lx\n", long_var);
-   long_var = long_var / 16;
-   printf("long: %lx\n", long_var);
-   long_var = long_var / 15;
-   printf("long: %lx\n", long_var);
-   long_var = long_var / 14;
-   printf("long: %lx\n", long_var);
-   long_var = long_var / 13;
-   printf("long: %lx\n", long_var);
-   long_var = long_var / 12;
-   printf("long: %lx\n", long_var);
-   long_var = long_var / 11;
-   printf("long: %lx\n", long_var);
+   a = -10;
+   b = -30;
+
+   printf("-10*-30 = %d\n", a*b);
+
+   a = 10;
+   b = -30;
+
+   printf("10*-30 = %d\n", a*b);
+
+   a = -10;
+   b = 30;
+
+   printf("-10*30 = %d\n", a*b);
+
+   a = 22158;
+
+   printf("long: %l\n", long_var);
+   printf("int: %d\n", a);
+
+   a = -22158;
+   printf("int: %d\n", a);
+
+   long_var = 1234567890;
+
+   printf("1234567890: %l\n", long_var);
+   printf("1234567890/10: %l\n", long_var/10L);
+
+   dump(&long_var, 4);
+
+   long_var = -long_var;
+   printf("-1234567890: %l\n", long_var);
+
+   long_var2 = -10;
+   printf("-1234567890/-10: %l\n", long_var/long_var2);
+
+   dump(&long_var, 4);
+
+   long_var = -long_var;
+   printf("- -1234567890: %l\n", long_var);
+
 
    while(1) {
       puts("> ");

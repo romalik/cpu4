@@ -32,10 +32,8 @@ seta xh
 alu shr
 puta xh
 
-jmp c $__crt_MULU1_c
 ;   if carry r += x;
-jmp $__crt_MULU1_nc
-__crt_MULU1_c:
+jmp nc $__crt_MULU1_nc
 
 seta xl
 setb yl
@@ -70,6 +68,9 @@ ret
 ;
 ;
 __crt_MULI2:
+
+
+
 __crt_MULU2:
 
 ; r = 0;
@@ -95,10 +96,7 @@ __crt_MULI2_continue:
 alus1 shr 8
 alus1 shrc 7
 
-jmp c $__crt_MULI2_c
-;   if carry r += x;
-jmp $__crt_MULI2_nc
-__crt_MULI2_c:
+jmp nc $__crt_MULI2_nc
 
 
 alus2 add 5 3
@@ -168,10 +166,7 @@ alus1 shrc 13
 alus1 shrc 12
 alus1 shrc 11
 
-jmp c $__crt_MULI4_c
-;   if carry r += x;
-jmp $__crt_MULI4_nc
-__crt_MULI4_c:
+jmp nc $__crt_MULI4_nc
 
 
 alus2 add 7 3
@@ -263,18 +258,18 @@ y++ ; set R[0] = 1
 
 __crt_DIVI2_end_set:
 
-;   if R ≥ D (y >= sp+5)
+;   if R ≥ D (y >= sp+7)
 get_rel_sp b 8 ;  b <- Dh
 seta yh
 cmp sub
 
-jmp l $__crt_DIVI2_end_cmp
-jmp g $__crt_DIVI2_cmp_true
+jmp b $__crt_DIVI2_end_cmp
+jmp a $__crt_DIVI2_cmp_true
 
 get_rel_sp b 7 ;  b <- Dl
 seta yl
 cmp sub
-jmp ge $__crt_DIVI2_cmp_true
+jmp ae $__crt_DIVI2_cmp_true
 jmp $__crt_DIVI2_end_cmp
 
 __crt_DIVI2_cmp_true:
@@ -311,9 +306,8 @@ seta xl
 alu shrc
 puta xl
 
-jmp c $__crt_DIVI2_end ; if I == 1, last shift will push 1 to carry, exit
-jmp $__crt_DIVI2_loop
-__crt_DIVI2_end:
+jmp nc $__crt_DIVI2_loop
+
 ret
 
 
@@ -439,19 +433,19 @@ put_rel_sp a 5
 ;   if R ≥ D (sp+5 >= sp+17)
 
 cmps2 sub 20 8
-jmp l $__crt_DIVI4_end_cmp
-jmp g $__crt_DIVI4_cmp_true
+jmp b $__crt_DIVI4_end_cmp
+jmp a $__crt_DIVI4_cmp_true
 
 cmps2 sub 19 7
-jmp l $__crt_DIVI4_end_cmp
-jmp g $__crt_DIVI4_cmp_true
+jmp b $__crt_DIVI4_end_cmp
+jmp a $__crt_DIVI4_cmp_true
 
 cmps2 sub 18 6
-jmp l $__crt_DIVI4_end_cmp
-jmp g $__crt_DIVI4_cmp_true
+jmp b $__crt_DIVI4_end_cmp
+jmp a $__crt_DIVI4_cmp_true
 
 cmps2 sub 17 5
-jmp ge $__crt_DIVI4_cmp_true
+jmp ae $__crt_DIVI4_cmp_true
 jmp $__crt_DIVI4_end_cmp
 
 __crt_DIVI4_cmp_true:
@@ -483,9 +477,7 @@ alus1 shrc 2
 alus1 shrc 1
 
 
-jmp c $__crt_DIVI4_end ; if I == 1, last shift will push 1 to carry, exit
-jmp $__crt_DIVI4_loop
-__crt_DIVI4_end:
+jmp nc $__crt_DIVI4_loop
 
 ; R = sp+5
 get_rel_sp_w x 5
@@ -495,15 +487,227 @@ get_rel_sp_w y 7
 adjust_sp s 8
 ret
 
-
+;__crt_DIVI4:
 __crt_DIVU4:
-__crt_DIVI4:
 call $__crt_divide32_worker
 ret
 
+__negate_tos_32:
+; op1h   +7
+; op1
+; op1
+; op1l   +4
+; retaddr
+; retaddr
+; zero   +1
+lit a 0
+push a
+alus3 sub 4 1 4 ; zero - opl
+alus3 sbc 5 1 4 ; zero - op
+alus3 sbc 6 1 4 ; zero - op
+alus3 sbc 7 1 4 ; zero - oph
+adjust_sp s 1
+ret
+
+__crt_DIVI4:
+; reserve 9 bytes
+; op1h   +23
+; op1
+; op1
+; op1l   +20
+; op2h   +19
+; op2
+; op2    
+; op2l   +16
+; ret    +15
+; ret
+; ret
+; ret    +12
+; retaddr
+; retaddr
+; sgn    +9
+; |op1h| +8
+; |op1 |
+; |op1 |
+; |op1l| +5
+; |op2h| +4
+; |op2 |
+; |op2 |
+; |op2l| +1
+
+
+; set sign counter to 0
+lit xl 0
+push xl
+; now op1 is s+12
+get_rel_sp_w a 12
+pushw a
+
+; now op1 is s+14
+get_rel_sp_w a 16
+pushw a
+
+; now b = high of op1
+lit a 0x80
+cmp and
+jmp z $__divi4_move_1_end
+
+x++
+
+call $__negate_tos_32
+
+__divi4_move_1_end:
+
+; now op2 is s+12 
+
+get_rel_sp_w a 12
+pushw a
+
+; now op2 is s+14
+get_rel_sp_w a 16
+pushw a
+
+; now b = high of op2
+lit a 0x80
+cmp and
+jmp z $__divi4_move_2_end
+
+x++
+
+call $__negate_tos_32
+
+__divi4_move_2_end:
+
+; alloc retval
+pushw a
+pushw a
+
+call $__crt_DIVU4
+
+; now retval is s+16
+
+lit a 1
+setb xl
+alu and
+jmp z $__divi4_move_retval
+
+call $__negate_tos_32
+
+__divi4_move_retval:
+
+popw a
+; now retval is s+14
+put_rel_sp_w a 14
+popw a
+; now retval is s+12
+put_rel_sp_w a 14
+
+adjust_sp s 9
+
+ret
+
+;__crt_MODI4:
 __crt_MODU4:
-__crt_MODI4:
 call $__crt_divide32_worker
 put_rel_sp_w x 3
 put_rel_sp_w y 5
 ret
+
+
+__crt_MODI4:
+; reserve 9 bytes
+; op1h   +23
+; op1
+; op1
+; op1l   +20
+; op2h   +19
+; op2
+; op2    
+; op2l   +16
+; ret    +15
+; ret
+; ret
+; ret    +12
+; retaddr
+; retaddr
+; sgn    +9
+; |op1h| +8
+; |op1 |
+; |op1 |
+; |op1l| +5
+; |op2h| +4
+; |op2 |
+; |op2 |
+; |op2l| +1
+
+
+; set sign counter to 0
+lit xl 0
+push xl
+; now op1 is s+12
+get_rel_sp_w a 12
+pushw a
+
+; now op1 is s+14
+get_rel_sp_w a 16
+pushw a
+
+; now b = high of op1
+lit a 0x80
+cmp and
+jmp z $__modi4_move_1_end
+
+x++
+
+call $__negate_tos_32
+
+__modi4_move_1_end:
+
+; now op2 is s+12 
+
+get_rel_sp_w a 12
+pushw a
+
+; now op2 is s+14
+get_rel_sp_w a 16
+pushw a
+
+; now b = high of op2
+lit a 0x80
+cmp and
+jmp z $__modi4_move_2_end
+
+x++
+
+call $__negate_tos_32
+
+__modi4_move_2_end:
+
+; alloc retval
+pushw a
+pushw a
+
+call $__crt_MODU4
+
+; now retval is s+16
+
+lit a 1
+setb xl
+alu and
+jmp z $__modi4_move_retval
+
+call $__negate_tos_32
+
+__modi4_move_retval:
+
+popw a
+; now retval is s+14
+put_rel_sp_w a 14
+popw a
+; now retval is s+12
+put_rel_sp_w a 14
+
+adjust_sp s 9
+
+ret
+

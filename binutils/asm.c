@@ -29,6 +29,44 @@ void emit(uint8_t opcode) {
 char expect_arg_n = 0;
 char expect_arg_size = 0;
 
+uint8_t gen_jmp_code(char * str) {
+
+  if(!strcmp(str, "o")) {
+    return 1;
+  } else if(!strcmp(str, "no")) {
+    return 1 | 8;
+  } else if(!strcmp(str, "s")) {
+    return 2;
+  } else if(!strcmp(str, "ns")) {
+    return 2 | 8;
+  } else if((!strcmp(str, "e")) || (!strcmp(str, "z"))) {
+    return 3;
+  } else if((!strcmp(str, "ne")) || (!strcmp(str, "nz"))) {
+    return 3 | 8;
+  } else if((!strcmp(str, "b")) || (!strcmp(str, "nae")) || (!strcmp(str, "c"))) {
+    return 4;
+  } else if((!strcmp(str, "nb")) || (!strcmp(str, "ae")) || (!strcmp(str, "nc"))) {
+    return 4 | 8;
+  } else if((!strcmp(str, "be")) || (!strcmp(str, "na"))) {
+    return 5;
+  } else if((!strcmp(str, "a")) || (!strcmp(str, "nbe"))) {
+    return 5 | 8;
+  } else if((!strcmp(str, "l")) || (!strcmp(str, "nge"))) {
+    return 6;
+  } else if((!strcmp(str, "ge")) || (!strcmp(str, "nl"))) {
+    return 6 | 8;
+  } else if((!strcmp(str, "le")) || (!strcmp(str, "ng"))) {
+    return 7;
+  } else if((!strcmp(str, "g")) || (!strcmp(str, "nle"))) {
+    return 7 | 8;
+  } else {
+    return 0;
+  }
+
+
+}
+
+
 void gen_instruction() {
   char keyword_id;
   char arg_id;
@@ -112,37 +150,15 @@ void gen_instruction() {
         //jmps
         // populate condition bits 
         arg_id = 0;
-        while(1) {
-          get_next_token();
-          if(!strcmp(token,"g")) {
-            arg_id |= 0x1;
-          } else if(!strcmp((token), "ge")) {
-            arg_id |= 0x3;
-          } else if(!strcmp((token), "e")) {
-            arg_id |= 0x2;
-          } else if(!strcmp((token), "le")) {
-            arg_id |= 0x6;
-          } else if(!strcmp((token), "l")) {
-            arg_id |= 0x4;
-          } else if(!strcmp((token), "ne")) {
-            arg_id |= 0x5;
-          } else if(!strcmp((token), "s")) {
-            arg_id |= 0x8;
+        get_next_token();
 
-          //theese work for unsigned   
-          } else if(!strcmp((token), "c")) {
-            arg_id |= 0x4;
-          } else if(!strcmp((token), "z")) {
-            arg_id |= 0x2;
-          } else {     
-            if(arg_id == 0) {
-              arg_id = 7;
-            }       
-            //unconditional, jump on any cond mask
-            unget_token();
-            break;
-          }
+        arg_id = gen_jmp_code(token);
+        if(!arg_id) {
+          //unconditional
+          unget_token();
+          
         }
+        
 
         opcode |= arg_id;
         emit(opcode);

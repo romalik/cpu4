@@ -264,6 +264,7 @@ struct regs r;
 #define low(x) (x[0])
 #define high(x) (x[1])
 #define val16(x) (((uint16_t)x[0]) | (((uint16_t)x[1])<<8))
+#define VF ((r.f & 0x8) >> 3)
 #define SF ((r.f & 0x4) >> 2)
 #define ZF ((r.f & 0x2) >> 1)
 #define CF (r.f & 0x1)
@@ -275,19 +276,82 @@ uint16_t sign_extend(uint8_t f) {
   return ret;
 }
 
+
+/*
+  "add",  //0
+  "sub",  //1
+  "neg",  //2
+  "shl",  //3
+  "shlc", //4
+  "inc",  //5
+  "adc",  //6
+  "sbc",  //7
+  "not",  //8
+  "and",  //9
+  "or",   //a
+  "xor",  //b
+  "zero", //c
+  "NOP",  //d
+  "shr",  //e
+  "shrc"  //f
+*/
+
+/*
+       ADDITION SIGN BITS
+    num1sign num2sign ADDsign
+   ---------------------------
+        0       0       0
+ *OVER* 0       0       1 (adding two positives should be positive)
+        0       1       0
+        0       1       1
+        1       0       0
+        1       0       1
+ *OVER* 1       1       0 (adding two negatives should be negative)
+        1       1       1
+
+      SUBTRACTION SIGN BITS
+    num1sign num2sign SUBsign
+   ---------------------------
+        0       0       0
+        0       0       1
+        0       1       0
+ *OVER* 0       1       1 (subtract negative is same as adding a positive)
+ *OVER* 1       0       0 (subtract positive is same as adding a negative)
+        1       0       1
+        1       1       0
+        1       1       1
+*/
+
 void aluop(uint8_t *res, uint8_t *flags) {
-
-
   uint8_t Z;
   uint8_t C;
   uint8_t S;
+  uint8_t V = 0;
   uint16_t tmp;
   switch(ARG) {
     case 0:
       tmp = r.a + r.b;
+
+      if(!(r.a&0x80) && !(r.b&0x80) && (tmp&0x80)) {
+        V = 1;
+      } else if(((r.a&0x80) && (r.b&0x80) && !(tmp&0x80))) {
+        V = 1;
+      } else {
+        V = 0;
+      }
+
       break;
     case 1:
       tmp = r.a - r.b;
+      
+      if(!(r.a&0x80) && (r.b&0x80) && (tmp&0x80)) {
+        V = 1;
+      } else if(((r.a&0x80) && !(r.b&0x80) && !(tmp&0x80))) {
+        V = 1;
+      } else {
+        V = 0;
+      }
+
       break;      
     case 2:
       tmp = -r.a;
@@ -303,9 +367,27 @@ void aluop(uint8_t *res, uint8_t *flags) {
       break;
     case 6:
       tmp = r.a + r.b + (r.f & 0x01);
+
+      if(!(r.a&0x80) && !(r.b&0x80) && (tmp&0x80)) {
+        V = 1;
+      } else if(((r.a&0x80) && (r.b&0x80) && !(tmp&0x80))) {
+        V = 1;
+      } else {
+        V = 0;
+      }
+
       break;
     case 7:
       tmp = r.a - r.b - (r.f & 0x01);
+
+      if(!(r.a&0x80) && (r.b&0x80) && (tmp&0x80)) {
+        V = 1;
+      } else if(((r.a&0x80) && !(r.b&0x80) && !(tmp&0x80))) {
+        V = 1;
+      } else {
+        V = 0;
+      }
+
       break;
     case 8:
       tmp = ~r.a;
@@ -337,7 +419,7 @@ void aluop(uint8_t *res, uint8_t *flags) {
   C = ((tmp & 0xff00) == 0)?0:1;
   S = ((tmp & 0x80))?1:0;
   *res = (tmp & 0xff);
-  *flags = (S << 2) | (Z << 1) | (C);
+  *flags = (V << 3) | (S << 2) | (Z << 1) | (C);
 
   //printf("\n>>>> ALU\ntmp: %d 0x%04x\nZ: %d\nC: %d\nS: %d\nres: %d\nflags: %d\n>>>>\n\n", tmp, tmp, Z, C, S, *res, *flags);
 
@@ -576,39 +658,32 @@ void op_cmps2() {
   r.sect = 0; 
 }
 
-
-//cond mask : czn
-
-#define IS ((ARG & 0x8)>>3)
-#define IC ((ARG & 0x4)>>2)
-#define IZ ((ARG & 0x2)>>1)
-#define IN ((ARG & 0x1))
-
+/*
+JE	ZF = 1	
+JNE	ZF = 0	
+JG/JNLE	ZF = 0 and SF = OF	
+JA/JNBE	CF = 0 and ZF = 0
+JLE/JNG	ZF = 1 or SF != OF	
+JBE/JNA	CF = 1 or ZF = 1
+JL/JNGE	SF != OF	
+JB/JNAE	CF = 1
+JGE/JNL	SF = OF	
+JAE/JNB	CF = 0
+*/
 void op_jmp() {
   uint8_t tmp_h;
   uint8_t tmp_l;
-/*
-  uint8_t cond_mask = 
-      (((IS&SF)^(CF)) << 2)
-    | ((ZF)           << 1)
-    | (((IS&SF)^(NF)))
-  ;
-*/
 
-  //printf("IS : %d\nSF: %d\nCF: %d\nZF: %d\n", IS, SF, CF, ZF);
-
-  uint8_t f1 = ( (IS&SF) | (CF) );
-  uint8_t f2 = ZF;
-
-  uint8_t cond_mask = 
-      ((f1)        << 2)
-    | ((f2)        << 1)
-    | (~(f1|f2)&0x01)
-  ;
-
-
-  //printf("cond mask: 0x%02X\n", cond_mask);
-  //printf("arg  mask: 0x%02X\n", (ARG&0x7));
+  uint8_t cond_vec[] = {
+    1,
+    VF,
+    SF,
+    ZF,
+    CF,
+    CF | ZF, //c = 1 or z = 1
+    SF ^ VF, //SF != VF
+    ZF | (SF ^ VF) //ZF = 1 or (SF != OF)	
+  };
 
   tmp_l = mem_read(val16(r.p));
   inc16(r.p);
@@ -617,7 +692,7 @@ void op_jmp() {
 
 
 
-  if(cond_mask & (ARG&0x7)) {
+  if(cond_vec[ARG&0x7] ^ ((ARG&0x8)>>3)) {
     low(r.p) = tmp_l;
     high(r.p) = tmp_h;
   }
@@ -627,37 +702,23 @@ void op_jmp() {
 void op_jmps() {
   uint8_t tmp_h;
   uint8_t tmp_l;
-/*
-  uint8_t cond_mask = 
-      (((IS&SF)^(CF)) << 2)
-    | ((ZF)           << 1)
-    | (((IS&SF)^(NF)))
-  ;
-*/
 
-  //printf("IS : %d\nSF: %d\nCF: %d\nZF: %d\n", IS, SF, CF, ZF);
-
-  uint8_t f1 = ( (IS&SF) | (CF) );
-  uint8_t f2 = ZF;
-
-  uint8_t cond_mask = 
-      ((f1)        << 2)
-    | ((f2)        << 1)
-    | (~(f1|f2)&0x01)
-  ;
-
-
-  //printf("cond mask: 0x%02X\n", cond_mask);
-  //printf("arg  mask: 0x%02X\n", (ARG&0x7));
+  uint8_t cond_vec[] = {
+    VF,
+    SF,
+    ZF,
+    CF,
+    CF | ZF, //c = 1 or z = 1
+    SF ^ VF, //SF != VF
+    ZF | (SF ^ VF) //ZF = 1 or (SF != OF)	
+  };
 
   inc16(r.s);
   tmp_l = mem_read(val16(r.s));
   inc16(r.s);
   tmp_h = mem_read(val16(r.s));
 
-
-
-  if(cond_mask & (ARG&0x7)) {
+  if(cond_vec[ARG&0x7] ^ ((ARG&0x8)>>3)) {
     low(r.p) = tmp_l;
     high(r.p) = tmp_h;
   }

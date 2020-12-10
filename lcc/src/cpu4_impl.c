@@ -278,25 +278,34 @@ void alu4(Node p) {
 
 
 void alu_unary(Node p) {
-	put_kid_to_reg8(p, 0, "a", 0);
+  if(generic(p->op) == BCOM) {
+    put_kid_to_reg8(p, 0, "a", 0);
 
-	switch(generic(p->op)) {
-		case BCOM: 	print("alu not\n"); 	break;
-		case NEG: 	print("alu neg\n"); 	break;
-		default:		assert(0);				break;
-	}
+    print("alu not\n");
 
-	put_reg8_to_target(p, "a", 0);
-  if(opsize(p->op) == 2) {
-    put_kid_to_reg8(p, 0, "a", 1);
+    put_reg8_to_target(p, "a", 0);
+    if(opsize(p->op) == 2) {
+      put_kid_to_reg8(p, 0, "a", 1);
 
-    switch(generic(p->op)) {
-      case BCOM: 	print("alu not\n"); 	break;
-      case NEG: 	print("alu neg\n"); 	break;
-      default:		assert(0);				break;
+      print("alu not\n");
+
+      put_reg8_to_target(p, "a", 1);
+    }
+  } else if(generic(p->op) == NEG) {
+    print("lit a 0\n");
+    put_kid_to_reg8(p, 0, "b", 0);
+    print("alu sub\n");
+
+    put_reg8_to_target(p, "a", 0);
+    if(opsize(p->op) == 2) {
+      print("lit a 0\n");
+      put_kid_to_reg8(p, 0, "b", 1);
+      print("alu sbc\n");
+      put_reg8_to_target(p, "a", 1);
     }
 
-    put_reg8_to_target(p, "a", 1);
+  } else {
+    assert(0);
   }
 }
 
@@ -311,26 +320,27 @@ void alu_unary4(Node p) {
     assert(0);
   }
 
+  if(generic(p->op) == BCOM) {
 
-  switch(generic(p->op)) {
-    case BCOM:	cmd = "not";	  break;
-    case NEG:	  cmd = "neg";  	break;
-    default:		assert(0);		break;
-  }
+    print("alus1 not %d\n", off_arg_0);
 
-  print("alus1 %s %d\n", cmd, off_arg_0);
-
-  for(i = 0; i<3; i++) {
-    off_arg_0 += 1;
-    off_target += 1;
-
-    switch(generic(p->op)) {
-      case BCOM:	cmd = "not";	  break;
-      case NEG:	  cmd = "neg";  	break;
-      default:		assert(0);		break;
+    for(i = 0; i<3; i++) {
+      off_arg_0 += 1;
+      off_target += 1;
+      print("alus1 not %d\n", off_arg_0);
     }
+  } else if(generic(p->op) == NEG) {
+    print("lit a 0\n");
+    put_kid_to_reg8(p, 0, "b", 0);
+    print("alu sub\n");
 
-    print("alus1 %s %d\n", cmd, off_arg_0);
+    put_reg8_to_target(p, "a", 0);
+    for(i = 0; i<3; i++) {
+      print("lit a 0\n");
+      put_kid_to_reg8(p, 0, "b", 1+i);
+      print("alu sbc\n");
+      put_reg8_to_target(p, "a", 1+i);
+    }
   }
 }
 
@@ -585,13 +595,11 @@ void cv(Node p) {
           print("jmp z $__label_%d\n", i);
           print("lit a 0xff\n");
           print("__label_%d:\n", i);
-          put_reg8_to_target(p, "a", 1);
           put_reg8_to_target(p, "a", 2);
           put_reg8_to_target(p, "a", 3);
 
         } else {
           print("lit a 0\n");
-          put_reg8_to_target(p, "a", 1);
           put_reg8_to_target(p, "a", 2);
           put_reg8_to_target(p, "a", 3);
 
@@ -925,8 +933,320 @@ void asgn4(Node p) {
 }
 
 
+void cond_g(Node p, int is_signed) {
+  int i;
+  if(opsize(p->op) == 1) {
+    put_kid_to_reg8(p, 0, "a", 0);
+    put_kid_to_reg8(p, 1, "b", 0);
+    print("cmp sub\n");
+    print("jmp %s $%s\n", is_signed?"g":"a", p->syms[0]->x.name);
+
+  } else if(opsize(p->op) == 2) {
+
+    assert( is_target_spill(p->kids[0]->target) &&
+            is_target_spill(p->kids[1]->target));
+      
+      int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+      int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
+
+    i = genlabel(1);
+
+    print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
+    print("jmp %s $__jmp_label_false_%d\n", is_signed?"l":"b", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1, off_arg_0);
+    print("jmp a $%s\n", p->syms[0]->x.name);
+
+    print("__jmp_label_false_%d:\n", i);
+
+  } else if(opsize(p->op) == 4) {
+
+    assert( is_target_spill(p->kids[0]->target) &&
+        is_target_spill(p->kids[1]->target));
+      
+    int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+    int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
+    i = genlabel(1);
+
+    print("cmps2 sub %d %d\n", off_arg_1+3, off_arg_0+3);
+    print("jmp %s $__jmp_label_false_%d\n", is_signed?"l":"b", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+2, off_arg_0+2);
+    print("jmp b $__jmp_label_false_%d\n", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
+    print("jmp b $__jmp_label_false_%d\n", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+0, off_arg_0+0);
+    print("jmp a $%s\n", p->syms[0]->x.name);
+
+    print("__jmp_label_false_%d:\n", i);
+  }
+
+}
+void cond_ge(Node p, int is_signed) {
+  int i;
+  if(opsize(p->op) == 1) {
+    put_kid_to_reg8(p, 0, "a", 0);
+    put_kid_to_reg8(p, 1, "b", 0);
+    print("cmp sub\n");
+    print("jmp %s $%s\n", is_signed?"ge":"ae", p->syms[0]->x.name);
+
+  } else if(opsize(p->op) == 2) {
+
+    assert( is_target_spill(p->kids[0]->target) &&
+            is_target_spill(p->kids[1]->target));
+      
+      int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+      int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
+
+    i = genlabel(1);
+
+    print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
+    print("jmp %s $__jmp_label_false_%d\n", is_signed?"l":"b", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1, off_arg_0);
+    print("jmp ae $%s\n", p->syms[0]->x.name);
+
+    print("__jmp_label_false_%d:\n", i);
+
+  } else if(opsize(p->op) == 4) {
+
+    assert( is_target_spill(p->kids[0]->target) &&
+        is_target_spill(p->kids[1]->target));
+      
+    int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+    int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
+    i = genlabel(1);
+
+    print("cmps2 sub %d %d\n", off_arg_1+3, off_arg_0+3);
+    print("jmp %s $__jmp_label_false_%d\n", is_signed?"l":"b", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+2, off_arg_0+2);
+    print("jmp b $__jmp_label_false_%d\n", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
+    print("jmp b $__jmp_label_false_%d\n", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+0, off_arg_0+0);
+    print("jmp ae $%s\n", p->syms[0]->x.name);
+
+    print("__jmp_label_false_%d:\n", i);
+  }
+
+  
+}
+void cond_l(Node p, int is_signed) {
+  int i;
+  if(opsize(p->op) == 1) {
+    put_kid_to_reg8(p, 0, "a", 0);
+    put_kid_to_reg8(p, 1, "b", 0);
+    print("cmp sub\n");
+    print("jmp %s $%s\n", is_signed?"l":"b", p->syms[0]->x.name);
+
+  } else if(opsize(p->op) == 2) {
+
+    assert( is_target_spill(p->kids[0]->target) &&
+            is_target_spill(p->kids[1]->target));
+      
+      int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+      int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
+
+    i = genlabel(1);
+
+    print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
+    print("jmp %s $__jmp_label_false_%d\n", is_signed?"g":"a", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1, off_arg_0);
+    print("jmp b $%s\n", p->syms[0]->x.name);
+
+    print("__jmp_label_false_%d:\n", i);
+
+  } else if(opsize(p->op) == 4) {
+
+    assert( is_target_spill(p->kids[0]->target) &&
+        is_target_spill(p->kids[1]->target));
+      
+    int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+    int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
+    i = genlabel(1);
+
+    print("cmps2 sub %d %d\n", off_arg_1+3, off_arg_0+3);
+    print("jmp %s $__jmp_label_false_%d\n", is_signed?"g":"a", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+2, off_arg_0+2);
+    print("jmp a $__jmp_label_false_%d\n", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
+    print("jmp a $__jmp_label_false_%d\n", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+0, off_arg_0+0);
+    print("jmp b $%s\n", p->syms[0]->x.name);
+
+    print("__jmp_label_false_%d:\n", i);
+  }
+  
+}
+void cond_le(Node p, int is_signed) {
+  int i;
+  if(opsize(p->op) == 1) {
+    put_kid_to_reg8(p, 0, "a", 0);
+    put_kid_to_reg8(p, 1, "b", 0);
+    print("cmp sub\n");
+    print("jmp %s $%s\n", is_signed?"le":"be", p->syms[0]->x.name);
+
+  } else if(opsize(p->op) == 2) {
+
+    assert( is_target_spill(p->kids[0]->target) &&
+            is_target_spill(p->kids[1]->target));
+      
+      int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+      int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
+
+    i = genlabel(1);
+
+    print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
+    print("jmp %s $__jmp_label_false_%d\n", is_signed?"g":"a", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1, off_arg_0);
+    print("jmp be $%s\n", p->syms[0]->x.name);
+
+    print("__jmp_label_false_%d:\n", i);
+
+  } else if(opsize(p->op) == 4) {
+
+    assert( is_target_spill(p->kids[0]->target) &&
+        is_target_spill(p->kids[1]->target));
+      
+    int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+    int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
+    i = genlabel(1);
+
+    print("cmps2 sub %d %d\n", off_arg_1+3, off_arg_0+3);
+    print("jmp %s $__jmp_label_false_%d\n", is_signed?"g":"a", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+2, off_arg_0+2);
+    print("jmp a $__jmp_label_false_%d\n", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
+    print("jmp a $__jmp_label_false_%d\n", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+0, off_arg_0+0);
+    print("jmp be $%s\n", p->syms[0]->x.name);
+
+    print("__jmp_label_false_%d:\n", i);
+  }
+  
+}
+void cond_eq(Node p, int is_signed) {
+  int i;
+  if(opsize(p->op) == 1) {
+    put_kid_to_reg8(p, 0, "a", 0);
+    put_kid_to_reg8(p, 1, "b", 0);
+    print("cmp sub\n");
+    print("jmp %s $%s\n", "e", p->syms[0]->x.name);
+
+  } else if(opsize(p->op) == 2) {
+
+    assert( is_target_spill(p->kids[0]->target) &&
+            is_target_spill(p->kids[1]->target));
+      
+      int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+      int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
+
+    i = genlabel(1);
+
+    print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
+    print("jmp ne $__jmp_label_false_%d\n", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1, off_arg_0);
+    print("jmp e $%s\n", p->syms[0]->x.name);
+
+    print("__jmp_label_false_%d:\n", i);
+
+  } else if(opsize(p->op) == 4) {
+
+    assert( is_target_spill(p->kids[0]->target) &&
+        is_target_spill(p->kids[1]->target));
+      
+    int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+    int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
+    i = genlabel(1);
+
+    print("cmps2 sub %d %d\n", off_arg_1+3, off_arg_0+3);
+    print("jmp ne $__jmp_label_false_%d\n", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+2, off_arg_0+2);
+    print("jmp ne $__jmp_label_false_%d\n", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
+    print("jmp ne $__jmp_label_false_%d\n", i);
+
+    print("cmps2 sub %d %d\n", off_arg_1+0, off_arg_0+0);
+    print("jmp e $%s\n", p->syms[0]->x.name);
+
+    print("__jmp_label_false_%d:\n", i);
+  }
+  
+}
+void cond_ne(Node p, int is_signed) {
+  int i;
+  if(opsize(p->op) == 1) {
+    put_kid_to_reg8(p, 0, "a", 0);
+    put_kid_to_reg8(p, 1, "b", 0);
+    print("cmp sub\n");
+    print("jmp %s $%s\n", "ne", p->syms[0]->x.name);
+
+  } else if(opsize(p->op) == 2) {
+
+    assert( is_target_spill(p->kids[0]->target) &&
+            is_target_spill(p->kids[1]->target));
+      
+      int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+      int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
+
+    i = genlabel(1);
+
+    print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
+    print("jmp ne $%s\n", p->syms[0]->x.name);
+
+    print("cmps2 sub %d %d\n", off_arg_1, off_arg_0);
+    print("jmp ne $%s\n", p->syms[0]->x.name);
+
+
+  } else if(opsize(p->op) == 4) {
+
+    assert( is_target_spill(p->kids[0]->target) &&
+        is_target_spill(p->kids[1]->target));
+      
+    int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+    int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
+    i = genlabel(1);
+
+    print("cmps2 sub %d %d\n", off_arg_1+3, off_arg_0+3);
+    print("jmp ne $%s\n", p->syms[0]->x.name);
+
+    print("cmps2 sub %d %d\n", off_arg_1+2, off_arg_0+2);
+    print("jmp ne $%s\n", p->syms[0]->x.name);
+
+    print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
+    print("jmp ne $%s\n", p->syms[0]->x.name);
+
+    print("cmps2 sub %d %d\n", off_arg_1+0, off_arg_0+0);
+    print("jmp ne $%s\n", p->syms[0]->x.name);
+
+    print("__jmp_label_false_%d:\n", i);
+  }
+  
+}
+
+
 void cond_br(Node p) {
-  char * cmd;
+  char * cmd_32_high;
+  char * cmd_32_mid;
+  char * cmd_32_low;
+  char * cmd_8;
+
   char is_signed;
   int i;
 
@@ -950,131 +1270,25 @@ void cond_br(Node p) {
   switch (generic(p->op))
   {
   case EQ:
-    cmd = "e";
+    cond_eq(p, is_signed);
     break;
   case NE:
-    cmd = "ne";
+    cond_ne(p, is_signed);
     break;
   case GT:
-    cmd = "g";
+    cond_g(p, is_signed);
     break;		
   case GE:
-    cmd = "ge";
+    cond_ge(p, is_signed);
     break;
   case LE:
-    cmd = "le";
+    cond_le(p, is_signed);
     break;
   case LT:
-    cmd = "l";
+    cond_l(p, is_signed);
     break;
   default:
     assert(0);
-  }
-
-  if(opsize(p->op) == 1) {
-    put_kid_to_reg8(p, 0, "a", 0);
-    put_kid_to_reg8(p, 1, "b", 0);
-    print("cmp sub\n");
-    print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
-
-  } else if(opsize(p->op) == 2) {
-
-    if( is_target_spill(p->kids[0]->target) &&
-        is_target_spill(p->kids[1]->target)) {
-      
-      int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
-      int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
-
-      // compare high bytes, if equal - jump to low byte comparison
-      print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
-
-      i = genlabel(1);
-
-      print("jmp e $__jump_label__%d\n", i);
-      if ((generic(p->op)) != EQ)
-        print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
-      print("jmp $__jump_label_2__%d\n", i);
-      print("__jump_label__%d:\n", i);
-
-      // compare low bytes if high equal
-      print("cmps2 sub %d %d\n", off_arg_1, off_arg_0);
-
-      print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
-
-      print("__jump_label_2__%d:\n", i);
-
-
-    } else {
-      fprintf(stderr, "branch op sz2 not in spill!\n");
-      assert(0);
-      /*
-      // compare high bytes, if equal - jump to low byte comparison
-      put_kid_to_reg8(p, 0, "a", 1);
-      put_kid_to_reg8(p, 1, "b", 1);
-
-      print("cmp sub\n");
-
-      i = genlabel(1);
-
-      print("jmp e $__jump_label__%d\n", i);
-      if ((generic(p->op)) != EQ)
-        print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
-      print("jmp $__jump_label_2__%d\n", i);
-      print("__jump_label__%d:\n", i);
-
-      // compare low bytes if high equal
-      put_kid_to_reg8(p, 0, "a", 0);
-      put_kid_to_reg8(p, 1, "b", 0);
-
-      print("cmp sub\n");
-      print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
-
-      print("__jump_label_2__%d:\n", i);
-      */
-    }
-  } else if(opsize(p->op) == 4) {
-
-    assert( is_target_spill(p->kids[0]->target) &&
-        is_target_spill(p->kids[1]->target));
-      
-    int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
-    int off_arg_1 = get_spill_sp_offset(get_target(p->kids[1]->target)*2);
-    i = genlabel(1);
-
-    // compare high bytes, if equal - jump to low byte comparison
-    print("cmps2 sub %d %d\n", off_arg_1+3, off_arg_0+3);
-
-    print("jmp e $__jlabel_3__%d\n", i);
-    if ((generic(p->op)) != EQ)
-      print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
-
-    print("jmp $__jlabel_end__%d\n", i);
-    print("__jlabel_3__%d:\n", i);
-
-    print("cmps2 sub %d %d\n", off_arg_1+2, off_arg_0+2);
-
-    print("jmp e $__jlabel_2__%d\n", i);
-    if ((generic(p->op)) != EQ)
-      print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
-
-    print("jmp $__jlabel_end__%d\n", i);
-    print("__jlabel_2__%d:\n", i);
-
-    print("cmps2 sub %d %d\n", off_arg_1+1, off_arg_0+1);
-
-    print("jmp e $__jlabel_1__%d\n", i);
-    if ((generic(p->op)) != EQ)
-      print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
-
-    print("jmp $__jlabel_end__%d\n", i);
-    print("__jlabel_1__%d:\n", i);
-
-    // compare low bytes if high equal
-    print("cmps2 sub %d %d\n", off_arg_1, off_arg_0);
-
-    print("jmp %s %s $%s\n", (is_signed?"s":""), cmd, p->syms[0]->x.name);
-
-    print("__jlabel_end__%d:\n", i);
   }
 }
 
@@ -1126,6 +1340,7 @@ void shl4(Node p) {
   int n;
   int i;
   int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+  int off_target = get_spill_sp_offset(get_target(p->target)*2);
 
   if (generic(p->kids[1]->op) == CNST) {
     n = atoi(p->kids[1]->syms[0]->x.name);
@@ -1139,6 +1354,14 @@ void shl4(Node p) {
   	print("alus1 shlc %d\n", off_arg_0+2);
   	print("alus1 shlc %d\n", off_arg_0+3);
   }
+
+  if(off_arg_0 != off_target) {
+    print("get_rel_sp_w a %d\n", off_arg_0);
+    print("put_rel_sp_w a %d\n", off_target);
+    print("get_rel_sp_w a %d\n", off_arg_0+2);
+    print("put_rel_sp_w a %d\n", off_target+2);
+  }
+
 }
 
 void shr(Node p) {
@@ -1193,6 +1416,7 @@ void shr4(Node p) {
   int n;
   int i;
   int off_arg_0 = get_spill_sp_offset(get_target(p->kids[0]->target)*2);
+  int off_target = get_spill_sp_offset(get_target(p->target)*2);
 
   if (generic(p->kids[1]->op) == CNST) {
     n = atoi(p->kids[1]->syms[0]->x.name);
@@ -1206,6 +1430,14 @@ void shr4(Node p) {
   	print("alus1 shrc %d\n", off_arg_0+1);
   	print("alus1 shrc %d\n", off_arg_0);
   }
+
+  if(off_arg_0 != off_target) {
+    print("get_rel_sp_w a %d\n", off_arg_0);
+    print("put_rel_sp_w a %d\n", off_target);
+    print("get_rel_sp_w a %d\n", off_arg_0+2);
+    print("put_rel_sp_w a %d\n", off_target+2);
+  }
+
 }
 
 

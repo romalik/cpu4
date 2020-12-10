@@ -289,7 +289,7 @@ struct op_processors procs[] = {
 	{CVU,					{intr_fn,			cv,					cv,					cv}},
 	{ARG, 				{intr_fn,			arg,				arg,				arg}},
 	{BCOM, 				{intr_fn,			alu_unary,	alu_unary,	alu_unary4}},
-	{NEG, 				{intr_fn,			alu_unary,	alu_unary,	alu_unary}},
+	{NEG, 				{intr_fn,			alu_unary,	alu_unary,	alu_unary4}},
 	{INDIR, 			{intr_fn,			indir,			indir,			indir4}},
 	{JUMP, 				{jmp,					intr_fn,		jmp,				intr_fn}},
 	{RET,					{ret,					ret,				ret,				ret}},

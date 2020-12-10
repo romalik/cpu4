@@ -421,11 +421,11 @@ static int print(char **out, int *varg) {
             if (*format == 'l') {
                 if (*(format+1) == 'x') {
                     format++;
-                    pc += printl(out, *varg++, 16, 0, width, pad, 'a');
+                    pc += printl(out, *((long *)varg), 16, 0, width, pad, 'a');
                 } else {
-                    pc += printl(out, *varg++, 10, 1, width, pad, 'a');
+                    pc += printl(out, *((long *)varg), 10, 1, width, pad, 'a');
                 }
-                varg++;
+                varg+=2;
                 continue;
             }
             if (*format == 'c') {
