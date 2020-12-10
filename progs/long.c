@@ -1,55 +1,24 @@
 #include "stdlib.h"
 
 int main() {
-/*
-   long a = 4096;
-   long b = 256;
-   long c = 1024;
-   long d = 512;
-*/
+   long long_var = -1234567890;
+   long long_var2 = 10;
+   long long_var3;
+   int a = -12345;
+   int a2 = 10;
+   int a3;
+   printf("1234567890: %l\n", long_var);
+   printf("1234567890/-10: %l\n", long_var/(-10));
+   long_var3 = long_var / long_var2;
+   printf("1234567890/-10: %l\n", long_var3);
 
-   long a = 60;
-   long b = 40;
-   long c = 10;
-   long d = 120;
+   printf("12345: %d\n", a);
 
-   long r1;
-   long r2;
+   printf("12345/-10: %d\n", a/(-10));
+   printf("a2: %d\n", a2);
+   a3 = a / a2;
+   printf("12345/-10: %d\n", a3);
 
-   int ai = 60;
-   int bi = 40;
-   int ci = 10;
-   int di = 120;
-
-   int ri1;
-   int ri2;
-
-   if(a*b == c*d*2) {
-      printf("long Equal\n");
-   } else {
-      printf("long Not equal\n");
-   }
-
-   r1 = a*b;
-   r2 = c*d*2;
-
-   if(r1 == r2) {
-      printf("long asgn Equal\n");
-   } else {
-      printf("long asgn Not equal\n");
-   }
-
-   if(ai*bi == ci*di*2) {
-      printf("int Equal\n");
-   } else {
-      printf("int Not equal\n");
-   }
-
-   if(ri1 == ri2) {
-      printf("int asgn Equal\n");
-   } else {
-      printf("int asgn Not equal\n");
-   }
 
    return 0;
 }

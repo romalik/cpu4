@@ -312,15 +312,193 @@ ret
 
 
 __crt_DIVU2:
-__crt_DIVI2:
 call $__crt_divide_worker
 ret
 
 __crt_MODU2:
-__crt_MODI2:
 call $__crt_divide_worker
 put_rel_sp_w y 3
 ret
+
+
+
+
+__negate_tos_16:
+; op1h   +5
+; op1l   +4
+; retaddr
+; retaddr
+; zero   +1
+lit a 0
+push a
+alus3 sub 4 1 4 ; zero - opl
+alus3 sbc 5 1 5 ; zero - oph
+adjust_sp s 1
+ret
+
+__crt_DIVI2:
+; reserve 9 bytes
+; op1h   +23
+; op1l   +20
+; op2h   +19
+; op2l   +16
+; ret    +15
+; ret    +12
+; retaddr
+; retaddr
+; sgn    +9
+; |op1h| +8
+; |op1l| +5
+; |op2h| +4
+; |op2l| +1
+
+
+; set sign counter to 0
+lit xl 0
+push xl
+; now op1 is s+8
+get_rel_sp_w a 8
+pushw a
+
+; now b = high of op1
+lit a 0x80
+cmp and
+jmp z $__divi2_move_1_end
+
+x++
+
+call $__negate_tos_16
+
+__divi2_move_1_end:
+
+; now op2 is s+8
+
+get_rel_sp_w a 8
+pushw a
+
+; now b = high of op2
+lit a 0x80
+cmp and
+jmp z $__divi2_move_2_end
+
+x++
+
+call $__negate_tos_16
+
+__divi2_move_2_end:
+
+; alloc retval
+pushw a
+
+put_rel_sp xl 7
+
+call $__crt_DIVU2
+
+; now retval is s+10
+
+get_rel_sp xl 7
+lit a 1
+setb xl
+
+cmp and
+jmp z $__divi2_move_retval
+
+call $__negate_tos_16
+
+__divi2_move_retval:
+
+popw a
+; now retval is s+8
+put_rel_sp_w a 8
+
+adjust_sp s 5
+
+ret
+
+
+
+__crt_MODI2:
+; reserve 9 bytes
+; op1h   +23
+; op1l   +20
+; op2h   +19
+; op2l   +16
+; ret    +15
+; ret    +12
+; retaddr
+; retaddr
+; sgn    +9
+; |op1h| +8
+; |op1l| +5
+; |op2h| +4
+; |op2l| +1
+
+
+; set sign counter to 0
+lit xl 0
+push xl
+; now op1 is s+8
+get_rel_sp_w a 8
+pushw a
+
+; now b = high of op1
+lit a 0x80
+cmp and
+jmp z $__modi2_move_1_end
+
+x++
+
+call $__negate_tos_16
+
+__modi2_move_1_end:
+
+; now op2 is s+8
+
+get_rel_sp_w a 8
+pushw a
+
+; now b = high of op2
+lit a 0x80
+cmp and
+jmp z $__modi2_move_2_end
+
+x++
+
+call $__negate_tos_16
+
+__modi2_move_2_end:
+
+; alloc retval
+pushw a
+
+put_rel_sp xl 7
+
+call $__crt_MODU2
+
+; now retval is s+10
+
+get_rel_sp xl 7
+lit a 1
+setb xl
+
+cmp and
+jmp z $__modi2_move_retval
+
+call $__negate_tos_16
+
+__modi2_move_retval:
+
+popw a
+; now retval is s+8
+put_rel_sp_w a 8
+
+adjust_sp s 5
+
+ret
+
+
+
+
 
 
 
@@ -503,9 +681,9 @@ __negate_tos_32:
 lit a 0
 push a
 alus3 sub 4 1 4 ; zero - opl
-alus3 sbc 5 1 4 ; zero - op
-alus3 sbc 6 1 4 ; zero - op
-alus3 sbc 7 1 4 ; zero - oph
+alus3 sbc 5 1 5 ; zero - op
+alus3 sbc 6 1 6 ; zero - op
+alus3 sbc 7 1 7 ; zero - oph
 adjust_sp s 1
 ret
 
@@ -540,13 +718,14 @@ __crt_DIVI4:
 lit xl 0
 push xl
 ; now op1 is s+12
-get_rel_sp_w a 12
+get_rel_sp_w a 14
 pushw a
 
 ; now op1 is s+14
-get_rel_sp_w a 16
+get_rel_sp_w a 14
 pushw a
 
+get_rel_sp_w a 3
 ; now b = high of op1
 lit a 0x80
 cmp and
@@ -560,13 +739,14 @@ __divi4_move_1_end:
 
 ; now op2 is s+12 
 
-get_rel_sp_w a 12
+get_rel_sp_w a 14
 pushw a
 
 ; now op2 is s+14
-get_rel_sp_w a 16
+get_rel_sp_w a 14
 pushw a
 
+get_rel_sp_w a 3
 ; now b = high of op2
 lit a 0x80
 cmp and
@@ -582,13 +762,17 @@ __divi4_move_2_end:
 pushw a
 pushw a
 
+put_rel_sp xl 13
+
 call $__crt_DIVU4
 
 ; now retval is s+16
 
+get_rel_sp xl 13
 lit a 1
 setb xl
-alu and
+
+cmp and
 jmp z $__divi4_move_retval
 
 call $__negate_tos_32
@@ -645,13 +829,14 @@ __crt_MODI4:
 lit xl 0
 push xl
 ; now op1 is s+12
-get_rel_sp_w a 12
+get_rel_sp_w a 14
 pushw a
 
 ; now op1 is s+14
-get_rel_sp_w a 16
+get_rel_sp_w a 14
 pushw a
 
+get_rel_sp_w a 3
 ; now b = high of op1
 lit a 0x80
 cmp and
@@ -665,13 +850,14 @@ __modi4_move_1_end:
 
 ; now op2 is s+12 
 
-get_rel_sp_w a 12
+get_rel_sp_w a 14
 pushw a
 
 ; now op2 is s+14
-get_rel_sp_w a 16
+get_rel_sp_w a 14
 pushw a
 
+get_rel_sp_w a 3
 ; now b = high of op2
 lit a 0x80
 cmp and
@@ -687,13 +873,15 @@ __modi4_move_2_end:
 pushw a
 pushw a
 
+put_rel_sp xl 13
 call $__crt_MODU4
 
 ; now retval is s+16
 
+get_rel_sp xl 13
 lit a 1
 setb xl
-alu and
+cmp and
 jmp z $__modi4_move_retval
 
 call $__negate_tos_32
