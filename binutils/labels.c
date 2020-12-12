@@ -10,33 +10,37 @@ static uint16_t current_label_id = 0;
 
 
 static struct label_entry * create_new_label(char * label, struct section * current_section) {
-  struct label_entry * new_label = current_section->label_vec_pos;
+  struct label_entry * new_label = (struct label_entry *)(&current_section->label_vec[current_section->label_vec_pos]);
   strcpy(new_label->name, label);
   new_label->id = current_label_id;
   new_label->position = 0;
   new_label->present = 0;
   current_label_id++;
-  current_section->label_vec_pos++;
+  current_section->label_vec_pos+=sizeof(struct label_entry);
   return new_label;
 }
 
 
-struct label_entry * find_label(char * label, struct label_entry * e) {
-  while(*(e->name)) {
+struct label_entry * find_label(char * label, struct section * sect) {
+  int i;
+  struct label_entry * e;
+  for(i = 0; i<sect->label_mask_pos; i+=sizeof(struct label_entry)) {
+    e = (struct label_entry *)(&sect->label_vec[i]);
     if(!strcmp(e->name, label)) {
       return e;
     }
-    e++;
   }
   return 0;
 }
 
-struct label_entry * find_label_by_id(uint16_t id, struct label_entry * e) {
-  while(*(e->name)) {
+struct label_entry * find_label_by_id(uint16_t id, struct section * sect) {
+  int i;
+  struct label_entry * e;
+  for(i = 0; i<sect->label_mask_pos; i+=sizeof(struct label_entry)) {
+    e = (struct label_entry *)(&sect->label_vec[i]);
     if(e->id == id) {
       return e;
     }
-    e++;
   }
   return 0;
 }
@@ -44,7 +48,7 @@ struct label_entry * find_label_by_id(uint16_t id, struct label_entry * e) {
 void mark_label_position(char * label, uint16_t pos, struct section * current_section) {
   struct label_entry * e;
 
-  e = find_label(label, (struct label_entry *)current_section->label_vec);
+  e = find_label(label, current_section);
   if(!e) {
     e = create_new_label(label, current_section);
   }
@@ -78,6 +82,7 @@ int calculate_offset_sum(char * str) {
 
 uint16_t mark_label_use(char * label, uint16_t addr, struct section * current_section) {
   struct label_entry * e;
+  uint16_t * mask_ptr;
   int offset = 0;
   char * sign_pos = NULL;
 
@@ -92,16 +97,19 @@ uint16_t mark_label_use(char * label, uint16_t addr, struct section * current_se
     *sign_pos = 0;
   }
 
-  e = find_label(label, (struct label_entry *)current_section->label_vec);
+  e = find_label(label, current_section);
   if(!e) {
     e = create_new_label(label, current_section);
   }
 
-  *(current_section->label_mask_pos) = addr;
-  current_section->label_mask_pos++;
-  
-  *(current_section->label_mask_pos) = offset;
-  current_section->label_mask_pos++;
-  
+  mask_ptr = (uint16_t *)(&current_section->label_mask[current_section->label_mask_pos]);
+
+  *mask_ptr = addr;
+
+  mask_ptr++;  
+  *mask_ptr = offset;
+
+  current_section->label_mask_pos += 4;
+
   return e->id;
 }

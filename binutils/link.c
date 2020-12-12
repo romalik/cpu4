@@ -6,66 +6,162 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "robj.h"
+#include "sections.h"
 
 #define MAXFILES 1000
 
-static uint8_t * images[MAXFILES];
-static uint16_t image_sizes[MAXFILES];
-static char * image_names[MAXFILES];
 
-static uint8_t * label_vecs[MAXFILES];
-static uint16_t label_vec_sizes[MAXFILES];
+struct object_file {
+  char * name;
+  struct robj_header header;
+  struct section ** sections;
+};
 
-static uint16_t * label_masks[MAXFILES];
-static uint16_t label_mask_sizes[MAXFILES];
+struct object_file * object_files[MAXFILES];
 
-
-uint8_t loaded_files;
+uint8_t loaded_files = 0;
 
 
 void linker_init() {
-  memset(images, 0, MAXFILES*sizeof(uint8_t *));
-  memset(image_sizes, 0, MAXFILES*sizeof(uint16_t));
-  memset(label_vecs, 0, MAXFILES*sizeof(uint8_t *));
-  memset(label_vec_sizes, 0, MAXFILES*sizeof(uint16_t));
-  memset(label_masks, 0, MAXFILES*sizeof(uint16_t *));
-  memset(label_mask_sizes, 0, MAXFILES*sizeof(uint16_t));
-  loaded_files = 0;
 
 }
 
 
-void linker_add_image(uint8_t * image, uint8_t * label_vec, uint8_t * label_mask, uint16_t image_size, uint16_t label_vec_size, uint16_t label_mask_size_bytes) {
-  images[loaded_files] = image;
-  image_sizes[loaded_files] = image_size;
-  label_vecs[loaded_files] = label_vec;
-  label_vec_sizes[loaded_files] = label_vec_size;
-  label_masks[loaded_files] = (uint16_t *)label_mask;
-  label_mask_sizes[loaded_files] = label_mask_size_bytes/2;
+
+
+
+void load_file(char * path) {
+  FILE *f = fopen(path, "rb");
+  int i;
+  struct object_file * obj;
+
+  printf("load file %s\n", path);
+  obj = object_files[loaded_files] = (struct object_file *)malloc(sizeof(struct object_file));
+
+
+  fread(&obj->header, sizeof(struct robj_header), 1, f);
+
+  if(memcmp(obj->header.signature, ROBJ_SIGNATURE, 4)) {
+    fprintf(stderr, "File %s not an ROBJ\n", path);
+    exit(1);
+  }
+
+  if(obj->header.type != ROBJ_TYPE_OBJECT) {
+    fprintf(stderr, "File %s type not object\n", path);
+    exit(1);
+  }
+
+  obj->sections = (struct section **)malloc(obj->header.n_sections * sizeof(struct section *));
+
+  for(i = 0; i<obj->header.n_sections; i++) {
+    obj->sections[i] = deserialize_section(f);
+    printf("deserialize %s\n", obj->sections[i]->name);
+  }
   loaded_files++;
+
+  fclose(f);
 }
+
+struct section_list_entry {
+  struct object_file * origin;
+  struct section * section;
+  struct section_list_entry * next;
+};
+
+struct section_dict {
+  char name[32];
+  struct section_list_entry * list;
+};
+
+#define MAX_DICT_SIZE 255
+
+struct section_dict * sects[MAX_DICT_SIZE];
+int sects_sz = 0;
+
+static struct section_dict * get_dict_by_name(char * name) {
+  int i;
+  for(i = 0; i<sects_sz; i++) {
+    if(!strcmp(sects[i]->name, name)) {
+      return sects[i];
+    }
+  }
+  sects[sects_sz] = (struct section_dict *)malloc(sizeof(struct section_dict));
+  strcpy(sects[sects_sz]->name, name);
+  sects[sects_sz]->list = NULL;
+  sects_sz++;
+  return sects[sects_sz - 1];
+}
+
+void append_to_sect_list(struct section_dict * dict, struct section * section, struct object_file * origin) {
+  if(dict->list == NULL) {
+    dict->list = (struct section_list_entry *)malloc(sizeof(struct section_list_entry));
+    dict->list->next = NULL;
+    dict->list->section = section;
+    dict->list->origin = origin;
+  } else {
+    struct section_list_entry * node;
+    node = dict->list;
+    while(node->next != NULL) {
+      node = node->next;
+    }
+    node->next = (struct section_list_entry *)malloc(sizeof(struct section_list_entry));
+    node->next->next = NULL;
+    node->next->section = section;
+    node->next->origin = origin;
+  }
+}
+
+void build_section_lists() {
+  int i,j;
+  int sects_sz = 0;
+  struct section_dict * sd;
+  memset(sects, 0, MAX_DICT_SIZE*sizeof(struct section_dict *));
+
+  for(i = 0; i<loaded_files; i++) {
+    for(j = 0; j<object_files[i]->header.n_sections; j++) {
+      char * sect_name = object_files[i]->sections[j]->name;
+      printf("reg sect name %s\n", sect_name);
+      sd = get_dict_by_name(sect_name);
+      append_to_sect_list(sd, object_files[i]->sections[j], object_files[i]);
+    }
+  }  
+
+}
+
 
 void linker_offset_labels() {
+  int i, j;
   uint16_t c_off = 0;
-  uint8_t c_image = 1;
   struct label_entry * e;
-  while(c_image < loaded_files) {
-    c_off += image_sizes[c_image-1];    
-    e = (struct label_entry *)label_vecs[c_image];
-    while(*(e->name)) {
-      if(e->present) e->position += c_off;
-      e++;
-    }
-    c_image++;
+
+  for(i = 0; i < sects_sz; i++) {
+    struct section_list_entry * node;
+    node = sects[i]->list;
+    while(node) {
+
+      e = (struct label_entry *)node->section->label_vec;
+      for(j = 0; j<node->section->label_vec_pos; j++) {
+        if(e[j].present) e[j].position += c_off;
+      }
+
+      c_off += node->section->data_pos;
+      node = node->next;
+    }    
   }
 }
 
 
-struct label_entry * find_located_label(uint16_t id, int file) {
+
+
+
+struct label_entry * find_located_label(uint16_t id, struct object_file* origin) {
   int i;
   char * name;
   struct label_entry * e;
-  e = find_label_by_id(id, (struct label_entry *)label_vecs[file]);
+  for(i = 0; i<origin->header.n_sections; i++) {
+    e = find_label_by_id(id, (struct label_entry *)origin->sections[i]);
+    if(e) break;
+  }
   if(!e) {
     printf("Corrupt label vec!\n");
     exit(1);
@@ -80,8 +176,11 @@ struct label_entry * find_located_label(uint16_t id, int file) {
   name = e->name;
   for(i = 0; i<loaded_files; i++) {
     if(i == file) continue;
+    for(i = 0; i<origin->header.n_sections; i++) {
+      e = find_label_by_id(id, (struct label_entry *)origin->sections[i]);
+    }
 
-    e = find_label(name, (struct label_entry *)label_vecs[i]);
+//    e = find_label(name, (struct label_entry *)label_vecs[i]);
     if(e) {
       if(e->present) {
         return e;
@@ -98,39 +197,34 @@ struct label_entry * find_located_label(uint16_t id, int file) {
 void linker_link() {
   struct label_entry * e;
   int curr_file;
-  int i;
+  int i, j;
   int offset;
   uint16_t addr;
   uint16_t id;
-  for(curr_file = 0; curr_file < loaded_files; curr_file++) {
-    for(i = 0; i<label_mask_sizes[curr_file]; i+=2) {
-      addr = label_masks[curr_file][i];
-      offset = label_masks[curr_file][i+1];
-      id = (images[curr_file][addr]) | (images[curr_file][addr+1] << 8);
 
-      e = find_located_label(id, curr_file);
-      if(e) {
-        images[curr_file][addr] = low((e->position + offset));
-        images[curr_file][addr+1] = high((e->position + offset));
-      } else {
-        exit(1);
+
+  for(i = 0; i < sects_sz; i++) {
+    struct section_list_entry * node;
+    node = sects[i]->list;
+    while(node) {
+      for(j = 0; j<node->section->label_mask_pos; j+=4) {
+        addr = *(uint16_t *)(&node->section->label_mask[j]);
+        offset = *(uint16_t *)(&node->section->label_mask[j+2]);
+        id = (node->section->data[addr]) | (node->section->data[addr+1] << 8);
+
+        e = find_located_label(id, curr_file);
+        if(e) {
+          node->section->data[addr] = low((e->position + offset));
+          node->section->data[addr+1] = high((e->position + offset));
+        } else {
+          exit(1);
+        }
       }
-
-    }
+    }    
   }
 }
 
 
-char * load_file(char * path) {
-  FILE *f = fopen(path, "rb");
-  fseek(f, 0, SEEK_END);
-  long fsize = ftell(f);
-  fseek(f, 0, SEEK_SET);
-  char *data = malloc(fsize);
-  fread(data, 1, fsize, f);
-  fclose(f);
-  return data;
-}
 
 
 char * output_fname;
@@ -140,6 +234,7 @@ char * raw_data[MAXFILES];
 int main(int argc, char ** argv) {
   FILE *f_out;
   int i = 0;
+  int j = 0;
   int file_cnt = 0;
   uint16_t obj_size;
   uint16_t label_vec_size;
@@ -154,36 +249,22 @@ int main(int argc, char ** argv) {
       }
       i++;
     } else {
-      raw_data[file_cnt] = load_file(argv[i]);
-      image_names[file_cnt] = argv[i];
-      file_cnt++;
+      load_file(argv[i]);
     }
   }
 
-  linker_init();
+  build_section_lists();
 
-  for(i = 0; i<file_cnt; i++) {
-    struct robj_header * header = (struct robj_header *)raw_data[i];
-    if(memcmp(header->signature,"robj",4)) {
-      printf("Bad file %d\n", i);
-      exit(1);
-    }
-
-    obj_size = ((uint16_t)header->obj_size_h << 8) | ((uint16_t)header->obj_size_l);
-    label_vec_size = ((uint16_t)header->label_vec_size_h << 8) | ((uint16_t)header->label_vec_size_l);
-    label_mask_size = ((uint16_t)header->label_mask_size_h << 8) | ((uint16_t)header->label_mask_size_l);
-
-    //printf("label_vec_size: %zu\n", label_vec_size);
-
-    linker_add_image(
-      raw_data[i] + sizeof(struct robj_header), 
-      raw_data[i] + sizeof(struct robj_header) + obj_size,
-      raw_data[i] + sizeof(struct robj_header) + obj_size + label_vec_size,
-      obj_size,
-      label_vec_size,
-      label_mask_size
-      );
+  for(i = 0; i < sects_sz; i++) {
+    struct section_list_entry * node;
+    printf("sect %s in\n", sects[i]->name);
+    node = sects[i]->list;
+    while(node) {
+      printf("\t%s\n", node->section->name);
+      node = node->next;
+    }    
   }
+
   /*
   printf("Loaded labels:\n");
   for(i = 0; i<loaded_files; i++) {
@@ -203,7 +284,7 @@ int main(int argc, char ** argv) {
 */
   linker_link();
 
-
+/*
   f_out = fopen(output_fname, "wb");
   for(i = 0; i<loaded_files; i++) {
     fwrite(images[i], 1, image_sizes[i], f_out);
@@ -214,7 +295,7 @@ int main(int argc, char ** argv) {
   for(i = 0; i<loaded_files; i++) {
     free(raw_data[i]);
   }
-
+*/
   return 0;
 
 }

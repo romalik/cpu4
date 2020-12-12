@@ -12,8 +12,8 @@ struct label_entry {
 };
 
 
-struct label_entry * find_label(char * label, struct label_entry * e);
-struct label_entry * find_label_by_id(uint16_t id, struct label_entry * e);
+struct label_entry * find_label(char * label, struct section * sect);
+struct label_entry * find_label_by_id(uint16_t id, struct section * sect);
 void mark_label_position(char * label, uint16_t pos, struct section * current_section);
 uint16_t mark_label_use(char * label, uint16_t addr, struct section * current_section);
 

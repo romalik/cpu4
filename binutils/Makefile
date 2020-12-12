@@ -12,11 +12,11 @@ crt1.o: crt1.s
 crt_end.o: crt_end.s
 	./cpu4as crt_end.s crt_end.o
 
-cpu4as: asm.c labels.c token.c util.c
-	$(CC) -o cpu4as asm.c labels.c token.c util.c
+cpu4as: asm.c labels.c token.c util.c sections.c
+	$(CC) -o cpu4as asm.c labels.c token.c util.c sections.c
 
-cpu4ld: link.c util.c labels.c
-	$(CC) -o cpu4ld link.c util.c labels.c
+cpu4ld: link.c util.c labels.c sections.c
+	$(CC) -o cpu4ld link.c util.c labels.c sections.c
 
 install: all
 	install -d /opt/cpu4/bin

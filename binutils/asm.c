@@ -32,8 +32,8 @@ struct section * create_section(char * sect_name) {
     strcpy(sections[n_sections]->name, sect_name);
     memset(sections[n_sections]->label_vec, 0, MAX_LABEL_VEC_SIZE);
     sections[n_sections]->data_pos = 0;
-    sections[n_sections]->label_vec_pos = (struct label_entry *)sections[n_sections]->label_vec;
-    sections[n_sections]->label_mask_pos = (uint16_t *)sections[n_sections]->label_mask;
+    sections[n_sections]->label_vec_pos = 0;
+    sections[n_sections]->label_mask_pos = 0;
     retval = sections[n_sections];
 
     n_sections++;
@@ -526,29 +526,22 @@ int main(int argc, char ** argv) {
 
   fclose(infile);
 
-  //hack to create empty field for linker
-  mark_label_position("",0, current_section);
-/*
+
   outfile = fopen(outfile_name, "wb");
 
-  uint16_t label_vec_size = get_label_vec_size();
-  uint16_t label_mask_size = get_label_usage_list_size();
 
-  memcpy(header.signature, "robj", 4);
-  header.obj_size_l = low(current_pos);
-  header.obj_size_h = high(current_pos);
-  header.label_vec_size_l = low(label_vec_size);
-  header.label_vec_size_h = high(label_vec_size);
-  header.label_mask_size_l = low(label_mask_size);
-  header.label_mask_size_h = high(label_mask_size);
-
+  memcpy(header.signature, ROBJ_SIGNATURE, 4);
+  header.type = ROBJ_TYPE_OBJECT;
+  header.n_sections = n_sections;
 
   fwrite(&header, 1, sizeof(struct robj_header), outfile);
-  fwrite(image, 1, current_pos, outfile);
-  fwrite(label_vec, 1, label_vec_size, outfile);
-  fwrite(label_usage_list, 1, label_mask_size, outfile);
+
+
+  for(i = 0; i<n_sections; i++) {
+    serialize_section(sections[i], outfile);
+  }
+
 
   fclose(outfile);
-*/
   return 0; 
 }
