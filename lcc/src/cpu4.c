@@ -43,16 +43,16 @@ static void I(segment)(int n)
 		switch (cseg = n)
 		{
 		case CODE:
-			print(";.text\n");
+			print(".section text\n");
 			return;
 		case DATA:
-			print(";.data\n");
+			print(".section data\n");
 			return;
 		case BSS:
-			print(";.bss\n");
+			print(".section bss\n");
 			return;
 		case LIT:
-			print(";.lit\n");
+			print(".section lit\n");
 			return;
 		default:
 			assert(0);

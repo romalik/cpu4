@@ -1299,7 +1299,8 @@ void shl(Node p) {
   if (generic(p->kids[1]->op) == CNST) {
     n = atoi(p->kids[1]->syms[0]->x.name);
   } else {
-    not_implemented()
+    intr_fn(p);
+    return;
   }
 
   for(i = 0; i<n; i++) {
@@ -1345,7 +1346,8 @@ void shl4(Node p) {
   if (generic(p->kids[1]->op) == CNST) {
     n = atoi(p->kids[1]->syms[0]->x.name);
   } else {
-    not_implemented()
+    intr_fn(p);
+    return;
   }
 
   for(i = 0; i<n; i++) {
@@ -1371,7 +1373,8 @@ void shr(Node p) {
   if (generic(p->kids[1]->op) == CNST) {
     n = atoi(p->kids[1]->syms[0]->x.name);
   } else {
-    not_implemented()
+    intr_fn(p);
+    return;
   }
 
   for(i = 0; i<n; i++) {
@@ -1421,7 +1424,8 @@ void shr4(Node p) {
   if (generic(p->kids[1]->op) == CNST) {
     n = atoi(p->kids[1]->syms[0]->x.name);
   } else {
-    not_implemented()
+    intr_fn(p);
+    return;
   }
 
   for(i = 0; i<n; i++) {

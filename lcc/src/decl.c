@@ -287,9 +287,9 @@ static void initglobal(Symbol p, int flag) {
 void defglobal(Symbol p, int seg) {
 	p->u.seg = seg;
 	swtoseg(p->u.seg);
+	(*IR->global)(p);
 	if (p->sclass != STATIC)
 		(*IR->export)(p);
-	(*IR->global)(p);
 	p->defined = 1;
 }
 
@@ -797,12 +797,14 @@ static void funcdefn(int sclass, char *id, Type ty, Symbol params[], Coordinate 
 				caller[i]->structarg = callee[i]->structarg = 1;
 			}
 	if (glevel > 1)	for (i = 0; callee[i]; i++) callee[i]->sclass = AUTO;
-	if (cfunc->sclass != STATIC)
-		(*IR->export)(cfunc);
 	if (glevel && IR->stabsym) {
 		swtoseg(CODE); (*IR->stabsym)(cfunc); }
 	swtoseg(CODE);
 	(*IR->function)(cfunc, caller, callee, cfunc->u.f.ncalls);
+
+	if (cfunc->sclass != STATIC)
+		(*IR->export)(cfunc);
+
 	if (glevel && IR->stabfend)
 		(*IR->stabfend)(cfunc, lineno);
 	foreach(stmtlabs, LABELS, checklab, NULL);

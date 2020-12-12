@@ -1,3 +1,5 @@
+.section text
+
 ; 8bit mult
 ;
 ; r = 0;

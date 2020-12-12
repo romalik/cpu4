@@ -2,46 +2,21 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-
+#include "sections.h"
 #include "util.h"
 #include "labels.h"
 
 static uint16_t current_label_id = 0;
-static struct label_entry * current_label_position;
-static struct label_entry * label_vec;
-
-static uint16_t * label_usage_list;
-static uint16_t * label_usage_list_pos;
 
 
-void set_label_usage_list(char * vec) {
-  label_usage_list = (uint16_t *)vec;
-  label_usage_list_pos = (uint16_t *)vec;
-}
-
-void set_label_vec(uint8_t * vec) {
-  current_label_position = (struct label_entry *)vec;
-  label_vec = (struct label_entry *)vec;
-}
-
-uint16_t get_label_usage_list_size() {
-  return (char *)label_usage_list_pos - (char *)label_usage_list;
-}
-
-uint16_t get_label_vec_size() {
-  return (char *)current_label_position - (char *)label_vec;
-}
-
-
-
-
-static struct label_entry * create_new_label(char * label) {
-  struct label_entry * new_label = current_label_position;
+static struct label_entry * create_new_label(char * label, struct section * current_section) {
+  struct label_entry * new_label = current_section->label_vec_pos;
   strcpy(new_label->name, label);
   new_label->id = current_label_id;
-
+  new_label->position = 0;
+  new_label->present = 0;
   current_label_id++;
-  current_label_position++;
+  current_section->label_vec_pos++;
   return new_label;
 }
 
@@ -66,12 +41,12 @@ struct label_entry * find_label_by_id(uint16_t id, struct label_entry * e) {
   return 0;
 }
 
-void mark_label_position(char * label, uint16_t pos) {
+void mark_label_position(char * label, uint16_t pos, struct section * current_section) {
   struct label_entry * e;
 
-  e = find_label(label, label_vec);
+  e = find_label(label, (struct label_entry *)current_section->label_vec);
   if(!e) {
-    e = create_new_label(label);
+    e = create_new_label(label, current_section);
   }
 
   e->position = pos;
@@ -101,7 +76,7 @@ int calculate_offset_sum(char * str) {
   }
 }
 
-uint16_t mark_label_use(char * label, uint16_t addr) {
+uint16_t mark_label_use(char * label, uint16_t addr, struct section * current_section) {
   struct label_entry * e;
   int offset = 0;
   char * sign_pos = NULL;
@@ -117,16 +92,16 @@ uint16_t mark_label_use(char * label, uint16_t addr) {
     *sign_pos = 0;
   }
 
-  e = find_label(label, label_vec);
+  e = find_label(label, (struct label_entry *)current_section->label_vec);
   if(!e) {
-    e = create_new_label(label);
+    e = create_new_label(label, current_section);
   }
 
-  *label_usage_list_pos = addr;
-  label_usage_list_pos++;
+  *(current_section->label_mask_pos) = addr;
+  current_section->label_mask_pos++;
   
-  *label_usage_list_pos = offset;
-  label_usage_list_pos++;
+  *(current_section->label_mask_pos) = offset;
+  current_section->label_mask_pos++;
   
   return e->id;
 }

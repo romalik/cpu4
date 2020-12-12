@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include "sections.h"
 #include "labels.h"
 #include "util.h"
 #include "token.h"
@@ -14,18 +15,56 @@
 
 #define panic(msg) panic_full((msg), __FILE__, __LINE__, current_line, token)
 
-uint16_t current_pos = 0;
+struct section * sections[MAX_SECTIONS];
 
-char image[65535];
-char label_vec[65535*16];
-char label_usage_list[65535*16];
+struct section * current_section = NULL;
+
+int n_sections = 0;
+
+#define S_TEXT 0
+#define S_DATA 1
+
+struct section * create_section(char * sect_name) {
+  struct section * retval = NULL;
+  if(n_sections < MAX_SECTIONS) {
+    printf("Create new section %s\n", sect_name);
+    sections[n_sections] = (struct section *)malloc(sizeof(struct section));
+    strcpy(sections[n_sections]->name, sect_name);
+    memset(sections[n_sections]->label_vec, 0, MAX_LABEL_VEC_SIZE);
+    sections[n_sections]->data_pos = 0;
+    sections[n_sections]->label_vec_pos = (struct label_entry *)sections[n_sections]->label_vec;
+    sections[n_sections]->label_mask_pos = (uint16_t *)sections[n_sections]->label_mask;
+    retval = sections[n_sections];
+
+    n_sections++;
+  } else {
+    fprintf(stderr, "MAX_SECTIONS exceeded\n");
+    exit(1);
+  }
+  return retval;
+}
+
+void select_section(char * sect_name) {
+  int i;
+  for(i = 0; i<n_sections; i++) {
+    if(!strcmp(sect_name, sections[i]->name)) {
+      current_section = sections[i];
+      return;
+    }
+  }
+  current_section = create_section(sect_name);
+}
+
 
 void emit(uint8_t opcode) {
-  //printf("put 0x%02x at 0x%04x\n", opcode, current_pos);
-  image[current_pos] = opcode;
-  current_pos++;
-  if(current_pos > 65534) {
-    panic("Image overflow!\n");
+  if(!current_section) {
+    panic("No section selected!");
+  }
+  current_section->data[current_section->data_pos] = opcode;
+  current_section->data_pos++;
+  if(current_section->data_pos > 65534) {
+    fprintf(stderr, "Section %s overflow\n", current_section->name);
+    panic("Section overflow");
   }
 }
 
@@ -344,7 +383,7 @@ void assemble() {
     if(token[token_length - 1] == ':') {
       //printf("Got label %s\n", token);
       token[token_length - 1] = 0;
-      mark_label_position(token, current_pos);
+      mark_label_position(token, current_section->data_pos, current_section);
     } else if(token[0] == '.') {
       //directive
 
@@ -352,7 +391,7 @@ void assemble() {
 
       if(!strcmp(&token[1], "org")) {
         get_next_token();
-        current_pos = strtol(token,0,0);
+        current_section->data_pos = strtol(token,0,0);
       } else if(!strcmp(&token[1], "byte")) {
         expect_arg_size = 1;
         expect_arg_n = 1;
@@ -368,7 +407,18 @@ void assemble() {
         }
       } else if(!strcmp(&token[1], "skip")) {
         get_next_token();
-        current_pos += strtol(token,0,0);
+        current_section->data_pos += strtol(token,0,0);
+
+      } else if(!strcmp(&token[1], "section")) {
+        get_next_token();
+        select_section(token);
+
+      } else if(!strcmp(&token[1], "export")) {
+        get_next_token();
+
+      } else if(!strcmp(&token[1], "import")) {
+        get_next_token();
+
       } else {
         printf("Directive: %s\n", token);
         panic("Bad directive");
@@ -377,7 +427,7 @@ void assemble() {
     } else if(token[0] == '$') {
       //label
       uint16_t label_id;
-      label_id = mark_label_use(&token[1], current_pos);
+      label_id = mark_label_use(&token[1], current_section->data_pos, current_section);
 
       assert(expect_arg_size == 2);
 
@@ -426,18 +476,12 @@ void assemble() {
 
 }
 
-void print_label_usage(uint16_t size) {
-  int i;
-  for(i = 0; i<size/2; i++) {
-    printf("Label used on 0x%04x\n", ((uint16_t *)label_usage_list)[i]);
-  }
-
-}
 
 char * infile_name;
 char * outfile_name;
 
 int main(int argc, char ** argv) {
+  int i;
   FILE * infile;
   FILE * outfile;
   struct robj_header header;
@@ -453,13 +497,18 @@ int main(int argc, char ** argv) {
 
   parser_set_file(infile);
 
-  memset(label_vec, 0, 65535);
-  set_label_vec(label_vec);
-  set_label_usage_list(label_usage_list);
 
   assemble();
 
-  printf("size: %d\n", current_pos);
+  for(i = 0; i<n_sections; i++) {
+    printf("section %s: %d bytes\n", sections[i]->name, sections[i]->data_pos);
+  }
+
+  for(i = 0; i<n_sections; i++) {
+    printf("section %s:\n", sections[i]->name);
+    print_labels(sections[i]->label_vec);
+  }
+
 
   //print_labels(label_vec);
   //print_label_usage(get_label_usage_list_size());
@@ -478,8 +527,8 @@ int main(int argc, char ** argv) {
   fclose(infile);
 
   //hack to create empty field for linker
-  mark_label_position("",0);
-
+  mark_label_position("",0, current_section);
+/*
   outfile = fopen(outfile_name, "wb");
 
   uint16_t label_vec_size = get_label_vec_size();
@@ -500,6 +549,6 @@ int main(int argc, char ** argv) {
   fwrite(label_usage_list, 1, label_mask_size, outfile);
 
   fclose(outfile);
-
+*/
   return 0; 
 }
