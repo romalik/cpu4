@@ -9,6 +9,7 @@ struct label_entry {
   uint16_t id;
   uint16_t position;
   uint8_t present;
+  uint8_t export;
 };
 
 

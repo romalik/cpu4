@@ -155,35 +155,35 @@ void linker_offset_labels() {
 
 
 struct label_entry * find_located_label(uint16_t id, struct object_file* origin) {
-  int i;
+  int i,j;
   char * name;
-  struct label_entry * e;
+  struct label_entry * e = NULL;
   for(i = 0; i<origin->header.n_sections; i++) {
-    e = find_label_by_id(id, (struct label_entry *)origin->sections[i]);
-    if(e) break;
-  }
-  if(!e) {
-    printf("Corrupt label vec!\n");
-    exit(1);
+    struct label_entry * e_;
+    e_ = find_label_by_id(id, origin->sections[i]);
+    if(e_) {
+      e = e_;
+    }
+    if(e->present) {
+      //label exists in the same file
+      return e;
+    }
   }
 
-  if(e->present) {
-    //label exists in the same file
-    return e;
+  if(!e) {
+    fprintf(stderr, "Corrupt label vec");
+    exit(1);
   }
 
   //search across other label vecs
   name = e->name;
   for(i = 0; i<loaded_files; i++) {
-    if(i == file) continue;
-    for(i = 0; i<origin->header.n_sections; i++) {
-      e = find_label_by_id(id, (struct label_entry *)origin->sections[i]);
-    }
-
-//    e = find_label(name, (struct label_entry *)label_vecs[i]);
-    if(e) {
-      if(e->present) {
-        return e;
+    for(j = 0; j<object_files[i]->header.n_sections; j++) {
+      e = find_label(name, object_files[i]->sections[j]);
+      if(e) {
+        if(e->present && e->export) {
+          return e;
+        }
       }
     }
   }
@@ -212,7 +212,7 @@ void linker_link() {
         offset = *(uint16_t *)(&node->section->label_mask[j+2]);
         id = (node->section->data[addr]) | (node->section->data[addr+1] << 8);
 
-        e = find_located_label(id, curr_file);
+        e = find_located_label(id, node->origin);
         if(e) {
           node->section->data[addr] = low((e->position + offset));
           node->section->data[addr+1] = high((e->position + offset));
@@ -224,7 +224,9 @@ void linker_link() {
   }
 }
 
-
+void sort_sects() {
+  //sort sections here (all text sections go before all data sections)
+}
 
 
 char * output_fname;
@@ -272,6 +274,8 @@ int main(int argc, char ** argv) {
     print_labels(label_vecs[i]);
   }
   */
+
+  sort_sects();
 
   linker_offset_labels();
 
