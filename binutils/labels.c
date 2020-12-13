@@ -35,6 +35,8 @@ static struct label_entry * create_new_label(char * label, struct section * curr
   new_label->position = 0;
   new_label->present = 0;
   new_label->export = 0;
+  new_label->import = 0;
+  
   current_label_id++;
   current_section->label_vec_pos+=sizeof(struct label_entry);
   return new_label;
@@ -87,6 +89,15 @@ void mark_label_export(char * label, struct section * current_section) {
   }
 
   e->export = 1;
+}
+
+void mark_label_import(char * label, struct section * section) {
+  struct label_entry * e;
+
+  e = find_label(label, section);
+  if(e) {
+    e->import = 1;
+  }
 }
 
 int calculate_offset_sum(char * str) {

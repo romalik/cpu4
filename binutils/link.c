@@ -68,6 +68,8 @@ struct section_list_entry {
   struct object_file * origin;
   struct section * section;
   struct section_list_entry * next;
+  int used;
+  uint16_t start;
 };
 
 struct section_dict {
@@ -109,6 +111,8 @@ void append_to_sect_list(struct section_dict * dict, struct section * section, s
     dict->list->next = NULL;
     dict->list->section = section;
     dict->list->origin = origin;
+    dict->list->used = 0;
+    dict->list->start = 0;
   } else {
     struct section_list_entry * node;
     node = dict->list;
@@ -119,6 +123,8 @@ void append_to_sect_list(struct section_dict * dict, struct section * section, s
     node->next->next = NULL;
     node->next->section = section;
     node->next->origin = origin;
+    node->next->used = 0;
+    node->next->start = 0;
   }
 }
 
@@ -148,13 +154,16 @@ void linker_offset_labels() {
     struct section_list_entry * node;
     node = sects[i]->list;
     while(node) {
+      if(node->used) {
+        node->start = c_off;
 
-      e = (struct label_entry *)node->section->label_vec;
-      for(j = 0; j<node->section->label_vec_pos / sizeof(struct label_entry); j++) {
-        if(e[j].present) e[j].position += c_off;
+        e = (struct label_entry *)node->section->label_vec;
+        for(j = 0; j<node->section->label_vec_pos / sizeof(struct label_entry); j++) {
+          if(e[j].present) e[j].position += c_off;
+        }
+
+        c_off += node->section->data_pos;
       }
-
-      c_off += node->section->data_pos;
       node = node->next;
     }    
   }
@@ -234,17 +243,19 @@ void linker_link() {
     struct section_list_entry * node;
     node = sects[i]->list;
     while(node) {
-      for(j = 0; j<node->section->label_mask_pos; j+=4) {
-        addr = *(uint16_t *)(&node->section->label_mask[j]);
-        offset = *(uint16_t *)(&node->section->label_mask[j+2]);
-        id = ((uint8_t)node->section->data[addr]) | ((uint8_t)node->section->data[addr+1] << 8);
+      if(node->used) {
+        for(j = 0; j<node->section->label_mask_pos; j+=4) {
+          addr = *(uint16_t *)(&node->section->label_mask[j]);
+          offset = *(uint16_t *)(&node->section->label_mask[j+2]);
+          id = ((uint8_t)node->section->data[addr]) | ((uint8_t)node->section->data[addr+1] << 8);
 
-        e = find_located_label(id, node->section, node->origin);
-        if(e) {
-          node->section->data[addr] = low((e->position + offset));
-          node->section->data[addr+1] = high((e->position + offset));
-        } else {
-          exit(1);
+          e = find_located_label(id, node->section, node->origin);
+          if(e) {
+            node->section->data[addr] = low((e->position + offset));
+            node->section->data[addr+1] = high((e->position + offset));
+          } else {
+            exit(1);
+          }
         }
       }
       node = node->next;
@@ -287,6 +298,93 @@ void sort_sects() {
 
 }
 
+struct section_list_entry * find_section_in_dict(struct section * ptr) {
+  int i;
+  for(i = 0; i < sects_sz; i++) {
+    struct section_list_entry * node;
+    node = sects[i]->list;
+    while(node) {
+      if(node->section == ptr) {
+        return node;
+      }
+      node = node->next;
+    }
+  }
+  return NULL;
+}
+
+//forward
+void require_section(struct section_list_entry * node);
+
+void require_label(char * label_name, struct section_list_entry * from_node) {
+  int i,j;
+
+  //search label in file first
+  if(from_node) {
+    for(i = 0; i<from_node->origin->header.n_sections; i++) {
+      struct label_entry * e = NULL;
+      e = find_label(label_name, from_node->origin->sections[i]);
+      if(e) {
+        if(e->present) {
+          struct section_list_entry * node = find_section_in_dict(from_node->origin->sections[i]);
+          if(!node) {
+            fprintf(stderr, "Section not found!\n");
+            exit(1);
+          }
+          if(node->used == 0) {
+//            printf("Including node %s from %s by label '%s'\n", node->section->name, node->origin->name, label_name);
+            node->used = 1;
+            require_section(node);
+          }
+          return;
+        }
+      }
+    }
+  }
+
+  //search for exports now in other files
+  for(i = 0; i < sects_sz; i++) {
+    struct section_list_entry * node;
+    node = sects[i]->list;
+    while(node) {
+      struct label_entry * e = NULL;
+      e = find_label(label_name, node->section);
+      if(e) {
+        if(e->present && e->export) {
+          if(node->used == 0) {
+//            printf("Including node %s from %s by label '%s'\n", node->section->name, node->origin->name, label_name);
+            node->used = 1;
+            require_section(node);
+          }
+          return;
+        }
+      }
+      node = node->next;
+    }
+  }
+
+  fprintf(stderr, "No one exports label '%s'\n", label_name);
+  exit(1);
+}
+
+void require_section(struct section_list_entry * node) {
+  int i;
+  struct label_entry * e;
+  for(i = 0; i<node->section->label_vec_pos; i+=sizeof(struct label_entry)) {
+    e = (struct label_entry *)(&node->section->label_vec[i]);
+    if(!e->present) {
+      require_label(e->name, node);
+    } 
+  }
+}
+
+
+
+void mark_used_sects() {
+  require_label("__entry", NULL);
+}
+
+
 
 char * output_fname;
 
@@ -316,7 +414,7 @@ int main(int argc, char ** argv) {
 
   build_section_lists();
 
-
+  mark_used_sects();
   /*
   printf("Loaded labels:\n");
   for(i = 0; i<loaded_files; i++) {
@@ -358,7 +456,7 @@ int main(int argc, char ** argv) {
     node = sects[i]->list;
     while(node) {
       fwrite(node->section->data, 1, node->section->data_pos, f_out);
-      printf("%d\t0x%04x\t[%s] %s\n", node->section->data_pos, node->section->data_pos, node->section->name, node->origin->name);
+      printf("%d\t0x%04x\t[%s] %s %d\n", node->section->data_pos, node->start, node->section->name, node->origin->name, node->used);
       node = node->next;
     }    
   }

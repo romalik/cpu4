@@ -964,7 +964,7 @@ static void I(global)(Symbol p)
 
 static void I(import)(Symbol p)
 {
-	print(";.import %s\n", p->x.name);
+	print(".import %s\n", p->x.name);
 }
 
 static void I(local)(Symbol p)

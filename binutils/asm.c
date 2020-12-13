@@ -429,7 +429,11 @@ void assemble() {
 
 
       } else if(!strcmp(&token[1], "import")) {
+        int i;
         get_next_token();
+        for(i = 0; i<n_sections; i++) {
+          mark_label_import(token, sections[i]);
+        }
 
       } else {
         printf("Directive: %s\n", token);
