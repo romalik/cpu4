@@ -68,6 +68,34 @@ void dump(void * start, int sz) {
    }
 }
 
+
+int unused_vec[2000];
+
+int huge_unused_func() {
+   char y = 2;
+   char x;
+   x = unused_vec[2];
+   x++;
+   x++;
+   x++;
+   x++;
+   x++;
+   x++;
+   x++;
+   x++;
+   x++;
+   x++;
+   x++;
+   x++;
+   x++;
+   x++;
+   x++;
+   x++;
+   x++;
+   x++;
+}
+
+
 int main() {
    char c;
    char * tstr = "blah";
@@ -85,7 +113,7 @@ int main() {
 
    printf("print test (12 23 34 'a' 'b' 'c' 0x3f 0x5c 'blah')%d %d %d %c %c %c 0x%02x 0x%02x '%s'\n", 12,23,34,'a','b','c',0x3f,0x5c,tstr);
 
-
+//   huge_unused_func();
 
 
    a = 1231;

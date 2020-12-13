@@ -13,7 +13,7 @@
 struct robj_header {
   char signature[4];
   char type;
-  char n_sections;
+  int n_sections;
 };
 
 

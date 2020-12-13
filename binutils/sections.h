@@ -3,14 +3,14 @@
 
 #include <stdio.h>
 
-#define MAX_SECTIONS 15
+#define MAX_SECTIONS 2048
 #define MAX_SECTION_SIZE 65535
 #define MAX_LABEL_VEC_SIZE 65535*16
 #define MAX_LABEL_MASK_SIZE 65535*16
 #define SECTION_NAME_SIZE 32
 
 struct section {
-  char name[32];
+  char name[SECTION_NAME_SIZE];
   char executable;
   char data[MAX_SECTION_SIZE];
   char label_vec[MAX_LABEL_VEC_SIZE];

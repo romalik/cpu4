@@ -1,4 +1,3 @@
-.section text
 
 ; 8bit mult
 ;
@@ -12,6 +11,7 @@
 ; arg_2 = sp+2+1+1+1 =  sp+5  -> xh
 ; retval = sp+2+1 =     sp+3  -> yl
 ;
+.section text___crt_MULU1
 __crt_MULU1:
 .export __crt_MULU1
 get_rel_sp xl 4
@@ -69,6 +69,7 @@ ret
 ; }
 ;
 ;
+.section text_MUL2
 __crt_MULI2:
 .export __crt_MULI2
 __crt_MULU2:
@@ -132,6 +133,8 @@ ret
 ; }
 ;
 ;
+.section text_MUL4
+
 __crt_MULI4:
 .export __crt_MULI4
 __crt_MULU4:
@@ -219,6 +222,7 @@ ret
 ;  end
 
 
+.section text_crt_divide_worker
 __crt_divide_worker:
 
 ; Q := 0                  -- Initialize quotient and remainder to zero
@@ -314,6 +318,7 @@ jmp nc $__crt_DIVI2_loop
 ret
 
 
+.section text_crt_DIVU2
 __crt_DIVU2:
 .export __crt_DIVU2
 call $__crt_divide_worker
@@ -328,6 +333,7 @@ ret
 
 
 
+.section text_crt_negate_16
 __negate_tos_16:
 ; op1h   +5
 ; op1l   +4
@@ -341,6 +347,7 @@ alus3 sbc 5 1 5 ; zero - oph
 adjust_sp s 1
 ret
 
+.section text_crt_DIVI2
 __crt_DIVI2:
 .export __crt_DIVI2
 ; reserve 9 bytes
@@ -423,6 +430,7 @@ ret
 
 
 
+.section text_crt_MODI2
 __crt_MODI2:
 .export __crt_MODI2
 ; reserve 9 bytes
@@ -533,7 +541,7 @@ ret
 ;   end
 ;  end
 
-
+.section text_crt_divide32_worker
 __crt_divide32_worker:
 
 ;alloc 2*4 bytes for I and R
@@ -673,11 +681,15 @@ adjust_sp s 8
 ret
 
 ;__crt_DIVI4:
+.section text_crt_DIVU4
+
 __crt_DIVU4:
 .export __crt_DIVU4
 call $__crt_divide32_worker
 ret
 
+
+.section text_crt_negate32
 __negate_tos_32:
 ; op1h   +7
 ; op1
@@ -695,6 +707,8 @@ alus3 sbc 7 1 7 ; zero - oph
 adjust_sp s 1
 ret
 
+
+.section text_crt_DIVI4
 __crt_DIVI4:
 .export __crt_DIVI4
 ; reserve 9 bytes
@@ -800,6 +814,8 @@ adjust_sp s 9
 ret
 
 ;__crt_MODI4:
+
+.section text_crt_MODU4
 __crt_MODU4:
 .export __crt_MODU4
 call $__crt_divide32_worker
@@ -808,6 +824,7 @@ put_rel_sp_w y 5
 ret
 
 
+.section text_crt_MODI4
 __crt_MODI4:
 .export __crt_MODI4
 ; reserve 9 bytes

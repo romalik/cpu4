@@ -35,28 +35,29 @@ int calculate_offset_sum(char * str) {
 }
 
 
+static int current_segment = 0;
+
+char * get_current_segment_name() {
+	switch (current_segment)
+	{
+	case CODE:
+		return "text";
+	case DATA:
+		return "data";
+	case BSS:
+		return "bss";
+	case LIT:
+		return "lit";
+	default:
+		assert(0);
+	}
+}
+
 static void I(segment)(int n)
 {
-	static int cseg;
-
-	if (cseg != n)
-		switch (cseg = n)
-		{
-		case CODE:
-			print(".section text\n");
-			return;
-		case DATA:
-			print(".section data\n");
-			return;
-		case BSS:
-			print(".section bss\n");
-			return;
-		case LIT:
-			print(".section lit\n");
-			return;
-		default:
-			assert(0);
-		}
+	if (current_segment != n) {
+		current_segment = n;
+	}
 }
 
 static void I(address)(Symbol q, Symbol p, long n)
@@ -625,6 +626,9 @@ static void I(function)(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	//wierd f->type->type->size to get return size
 	current_func_retsize = f->type->type->size;
 	current_sp_offset = 0;
+
+	print(".section %s_%s\n", get_current_segment_name(), f->x.name);
+
 	print("\n\n; function %s [%d] %d %d\n", f->x.name, f->type->type->size, maxoffset, maxargoffset);
 	print("%s:\n", f->x.name);
 	print("; alloc %d for locals\n", maxoffset);
@@ -959,6 +963,7 @@ static Node I(gen)(Node p)
 static void I(global)(Symbol p)
 {
 	//print("align %d\n", p->type->align > 4 ? 4 : p->type->align);
+	print(".section %s_%s\n", get_current_segment_name(), p->x.name);
 	print("%s:\n", p->x.name);
 }
 

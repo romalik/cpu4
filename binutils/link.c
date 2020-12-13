@@ -378,10 +378,23 @@ void require_section(struct section_list_entry * node) {
   }
 }
 
-
+int fl_remove_unused_sections = 1;
 
 void mark_used_sects() {
-  require_label("__entry", NULL);
+  int i;
+  if(fl_remove_unused_sections) {
+    require_label("__entry", NULL);
+  } else {
+    for(i = 0; i < sects_sz; i++) {
+      struct section_list_entry * node;
+      node = sects[i]->list;
+      while(node) {
+        node->used = 1;
+        node = node->next;
+      }
+    }
+  }
+
 }
 
 
@@ -394,7 +407,8 @@ int main(int argc, char ** argv) {
   FILE *f_out;
   int i = 0;
   int j = 0;
-  int file_cnt = 0;
+  int file_ct = 0;
+  size_t total_size = 0;
   uint16_t obj_size;
   uint16_t label_vec_size;
   uint16_t label_mask_size;
@@ -455,12 +469,16 @@ int main(int argc, char ** argv) {
     struct section_list_entry * node;
     node = sects[i]->list;
     while(node) {
-      fwrite(node->section->data, 1, node->section->data_pos, f_out);
-      printf("%d\t0x%04x\t[%s] %s %d\n", node->section->data_pos, node->start, node->section->name, node->origin->name, node->used);
+      if(node->used) {
+        total_size += fwrite(node->section->data, 1, node->section->data_pos, f_out);
+      }
+      printf("%d\t0x%04x\t(%c) <%s> [%s] %s\n", node->section->data_pos, node->start,  node->used?'+':' ', node->section->executable?"text":"data", node->section->name, node->origin->name);
       node = node->next;
     }    
   }
   fclose(f_out);
+
+  printf("size %s: %d\n", output_fname, total_size);
   return 0;
 
 }

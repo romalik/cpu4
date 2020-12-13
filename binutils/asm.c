@@ -25,7 +25,7 @@ int n_sections = 0;
 #define S_DATA 1
 
 char is_section_executable(char * name) {
-  if(!strcmp(name, "text")) {
+  if(!strncmp(name, "text", 4)) {
     return 1;
   } else if(!strcmp(name, "start_section")) {
     return 1;
@@ -38,7 +38,8 @@ struct section * create_section(char * sect_name) {
   struct section * retval = NULL;
   if(n_sections < MAX_SECTIONS) {
     sections[n_sections] = (struct section *)malloc(sizeof(struct section));
-    strcpy(sections[n_sections]->name, sect_name);
+    strncpy(sections[n_sections]->name, sect_name, SECTION_NAME_SIZE - 1);
+    sections[n_sections]->name[SECTION_NAME_SIZE - 1] = 0;
     memset(sections[n_sections]->label_vec, 0, MAX_LABEL_VEC_SIZE);
     sections[n_sections]->data_pos = 0;
     sections[n_sections]->label_vec_pos = 0;
