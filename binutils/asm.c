@@ -24,16 +24,26 @@ int n_sections = 0;
 #define S_TEXT 0
 #define S_DATA 1
 
+char is_section_executable(char * name) {
+  if(!strcmp(name, "text")) {
+    return 1;
+  } else if(!strcmp(name, "start_section")) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
 struct section * create_section(char * sect_name) {
   struct section * retval = NULL;
   if(n_sections < MAX_SECTIONS) {
-    printf("Create new section %s\n", sect_name);
     sections[n_sections] = (struct section *)malloc(sizeof(struct section));
     strcpy(sections[n_sections]->name, sect_name);
     memset(sections[n_sections]->label_vec, 0, MAX_LABEL_VEC_SIZE);
     sections[n_sections]->data_pos = 0;
     sections[n_sections]->label_vec_pos = 0;
     sections[n_sections]->label_mask_pos = 0;
+    sections[n_sections]->executable = is_section_executable(sect_name);
     retval = sections[n_sections];
 
     n_sections++;
@@ -415,6 +425,8 @@ void assemble() {
 
       } else if(!strcmp(&token[1], "export")) {
         get_next_token();
+        mark_label_export(token, current_section);
+
 
       } else if(!strcmp(&token[1], "import")) {
         get_next_token();
@@ -499,7 +511,7 @@ int main(int argc, char ** argv) {
 
 
   assemble();
-
+/*
   for(i = 0; i<n_sections; i++) {
     printf("section %s: %d bytes\n", sections[i]->name, sections[i]->data_pos);
   }
@@ -508,7 +520,7 @@ int main(int argc, char ** argv) {
     printf("section %s:\n", sections[i]->name);
     print_labels(sections[i]->label_vec);
   }
-
+*/
 
   //print_labels(label_vec);
   //print_label_usage(get_label_usage_list_size());

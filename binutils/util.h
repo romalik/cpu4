@@ -12,7 +12,6 @@ char find_keyword(char * kw[], char * str);
 #define low(x) ((uint8_t)(x&0xff))
 #define high(x) ((uint8_t)((x&0xff00) >> 8))
 
-void print_labels(uint8_t * label_vec);
 void hexdump(uint8_t * data, uint16_t length);
 
 

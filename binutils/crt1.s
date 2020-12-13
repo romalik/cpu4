@@ -13,7 +13,7 @@
 ; retval = sp+2+1 =     sp+3  -> yl
 ;
 __crt_MULU1:
-
+.export __crt_MULU1
 get_rel_sp xl 4
 get_rel_sp xh 5
 
@@ -70,10 +70,9 @@ ret
 ;
 ;
 __crt_MULI2:
-
-
-
+.export __crt_MULI2
 __crt_MULU2:
+.export __crt_MULU2
 
 ; r = 0;
 litw a 0
@@ -134,7 +133,9 @@ ret
 ;
 ;
 __crt_MULI4:
+.export __crt_MULI4
 __crt_MULU4:
+.export __crt_MULU4
 
 ; r = 0;
 litw a 0
@@ -314,10 +315,12 @@ ret
 
 
 __crt_DIVU2:
+.export __crt_DIVU2
 call $__crt_divide_worker
 ret
 
 __crt_MODU2:
+.export __crt_MODU2
 call $__crt_divide_worker
 put_rel_sp_w y 3
 ret
@@ -339,6 +342,7 @@ adjust_sp s 1
 ret
 
 __crt_DIVI2:
+.export __crt_DIVI2
 ; reserve 9 bytes
 ; op1h   +23
 ; op1l   +20
@@ -420,6 +424,7 @@ ret
 
 
 __crt_MODI2:
+.export __crt_MODI2
 ; reserve 9 bytes
 ; op1h   +23
 ; op1l   +20
@@ -669,6 +674,7 @@ ret
 
 ;__crt_DIVI4:
 __crt_DIVU4:
+.export __crt_DIVU4
 call $__crt_divide32_worker
 ret
 
@@ -690,6 +696,7 @@ adjust_sp s 1
 ret
 
 __crt_DIVI4:
+.export __crt_DIVI4
 ; reserve 9 bytes
 ; op1h   +23
 ; op1
@@ -794,6 +801,7 @@ ret
 
 ;__crt_MODI4:
 __crt_MODU4:
+.export __crt_MODU4
 call $__crt_divide32_worker
 put_rel_sp_w x 3
 put_rel_sp_w y 5
@@ -801,6 +809,7 @@ ret
 
 
 __crt_MODI4:
+.export __crt_MODI4
 ; reserve 9 bytes
 ; op1h   +23
 ; op1

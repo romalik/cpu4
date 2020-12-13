@@ -559,7 +559,7 @@ static void I(emit)(Node p)
 			}
 			else
 			{
-				fprintf(stderr, "Deleted something from tree: %s\n",opname(p->op));
+				//fprintf(stderr, "Deleted something from tree: %s\n",opname(p->op));
 				continue;
 			}
 		}
@@ -583,7 +583,7 @@ static void I(emit_tree)(Node p)
 			}
 			else
 			{
-				fprintf(stderr, "Deleted something from tree: %s\n",opname(p->op));
+				//fprintf(stderr, "Deleted something from tree: %s\n",opname(p->op));
 				continue;
 			}
 		}
@@ -597,7 +597,7 @@ static void I(emit_tree)(Node p)
 
 static void I(export)(Symbol p)
 {
-	print(";.export %s\n", p->x.name);
+	print(".export %s\n", p->x.name);
 }
 
 
@@ -902,7 +902,7 @@ static void gen_root(Node p) {
 		if ((generic(p->op) == CALL) || (generic(p->op) == ARG)){
 			return;
 		} else {
-			fprintf(stderr, "gen: Deleted something from tree: %s\n",opname(p->op));
+			//fprintf(stderr, "gen: Deleted something from tree: %s\n",opname(p->op));
 			return;
 		}
 	}

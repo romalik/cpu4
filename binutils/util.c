@@ -24,18 +24,6 @@ char find_keyword(char * kw[], char * str) {
 }
 
 
-void print_labels(uint8_t * label_vec) {
-  struct label_entry * e = (struct label_entry *)label_vec;
-
-  printf("Labels:\nID\tpos\tpres\tname\n");
-
-  while(*(e->name)) {
-    printf("0x%04x\t0x%04x\t%d\t%s\n", e->id, e->position, e->present, e->name);
-    e++;
-  }
-
-}
-
 void hexdump(uint8_t * data, uint16_t length) {
   uint16_t i = 0;
   uint8_t j = 0;

@@ -11,6 +11,7 @@
 
 struct section {
   char name[32];
+  char executable;
   char data[MAX_SECTION_SIZE];
   char label_vec[MAX_LABEL_VEC_SIZE];
   char label_mask[MAX_LABEL_MASK_SIZE];

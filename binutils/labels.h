@@ -17,8 +17,10 @@ struct label_entry * find_label(char * label, struct section * sect);
 struct label_entry * find_label_by_id(uint16_t id, struct section * sect);
 void mark_label_position(char * label, uint16_t pos, struct section * current_section);
 uint16_t mark_label_use(char * label, uint16_t addr, struct section * current_section);
+void mark_label_export(char * label, struct section * current_section);
 
-uint16_t get_label_usage_list_size();
-uint16_t get_label_vec_size();
+void print_labels(uint8_t * label_vec);
+void print_label(struct label_entry * e);
+
 
 #endif

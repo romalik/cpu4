@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include "robj.h"
 #include "sections.h"
+#include <assert.h>
+#include <string.h>
 
 #define MAXFILES 1000
 
@@ -35,7 +37,6 @@ void load_file(char * path) {
   int i;
   struct object_file * obj;
 
-  printf("load file %s\n", path);
   obj = object_files[loaded_files] = (struct object_file *)malloc(sizeof(struct object_file));
 
 
@@ -53,9 +54,10 @@ void load_file(char * path) {
 
   obj->sections = (struct section **)malloc(obj->header.n_sections * sizeof(struct section *));
 
+  obj->name = strdup(path);
+
   for(i = 0; i<obj->header.n_sections; i++) {
     obj->sections[i] = deserialize_section(f);
-    printf("deserialize %s\n", obj->sections[i]->name);
   }
   loaded_files++;
 
@@ -70,6 +72,7 @@ struct section_list_entry {
 
 struct section_dict {
   char name[32];
+  char executable;
   struct section_list_entry * list;
 };
 
@@ -88,11 +91,19 @@ static struct section_dict * get_dict_by_name(char * name) {
   sects[sects_sz] = (struct section_dict *)malloc(sizeof(struct section_dict));
   strcpy(sects[sects_sz]->name, name);
   sects[sects_sz]->list = NULL;
+  sects[sects_sz]->executable = -1;
   sects_sz++;
   return sects[sects_sz - 1];
 }
 
 void append_to_sect_list(struct section_dict * dict, struct section * section, struct object_file * origin) {
+  if((dict->executable != section->executable) && (dict->executable != -1)) {
+    fprintf(stderr, "Both executable and non-executable sections with same name\n");
+    assert(0);
+  }
+
+  dict->executable = section->executable;
+
   if(dict->list == NULL) {
     dict->list = (struct section_list_entry *)malloc(sizeof(struct section_list_entry));
     dict->list->next = NULL;
@@ -120,7 +131,6 @@ void build_section_lists() {
   for(i = 0; i<loaded_files; i++) {
     for(j = 0; j<object_files[i]->header.n_sections; j++) {
       char * sect_name = object_files[i]->sections[j]->name;
-      printf("reg sect name %s\n", sect_name);
       sd = get_dict_by_name(sect_name);
       append_to_sect_list(sd, object_files[i]->sections[j], object_files[i]);
     }
@@ -140,7 +150,7 @@ void linker_offset_labels() {
     while(node) {
 
       e = (struct label_entry *)node->section->label_vec;
-      for(j = 0; j<node->section->label_vec_pos; j++) {
+      for(j = 0; j<node->section->label_vec_pos / sizeof(struct label_entry); j++) {
         if(e[j].present) e[j].position += c_off;
       }
 
@@ -154,13 +164,31 @@ void linker_offset_labels() {
 
 
 
-struct label_entry * find_located_label(uint16_t id, struct object_file* origin) {
+struct label_entry * find_located_label(uint16_t id, struct section * sect, struct object_file* origin) {
   int i,j;
   char * name;
   struct label_entry * e = NULL;
+
+  //first find label name and return if it is present
+
+  e = find_label_by_id(id, sect);
+
+  if(e->present) {
+    //label exists in the same section
+    return e;
+  }
+
+  if(!e) {
+    fprintf(stderr, "Corrupt label vec");
+    exit(1);
+  }
+
+  //now try to find it in same file
+  name = e->name;
+
   for(i = 0; i<origin->header.n_sections; i++) {
     struct label_entry * e_;
-    e_ = find_label_by_id(id, origin->sections[i]);
+    e_ = find_label(name, origin->sections[i]);
     if(e_) {
       e = e_;
     }
@@ -176,7 +204,6 @@ struct label_entry * find_located_label(uint16_t id, struct object_file* origin)
   }
 
   //search across other label vecs
-  name = e->name;
   for(i = 0; i<loaded_files; i++) {
     for(j = 0; j<object_files[i]->header.n_sections; j++) {
       e = find_label(name, object_files[i]->sections[j]);
@@ -210,9 +237,9 @@ void linker_link() {
       for(j = 0; j<node->section->label_mask_pos; j+=4) {
         addr = *(uint16_t *)(&node->section->label_mask[j]);
         offset = *(uint16_t *)(&node->section->label_mask[j+2]);
-        id = (node->section->data[addr]) | (node->section->data[addr+1] << 8);
+        id = ((uint8_t)node->section->data[addr]) | ((uint8_t)node->section->data[addr+1] << 8);
 
-        e = find_located_label(id, node->origin);
+        e = find_located_label(id, node->section, node->origin);
         if(e) {
           node->section->data[addr] = low((e->position + offset));
           node->section->data[addr+1] = high((e->position + offset));
@@ -220,12 +247,44 @@ void linker_link() {
           exit(1);
         }
       }
+      node = node->next;
     }    
   }
 }
 
+int sect_comparator(const void * _a, const void * _b) {
+  const struct section_dict * a = *(const struct section_dict **)_a;
+  const struct section_dict * b = *(const struct section_dict **)_b;
+
+  //place .section start_section first
+  if(!strcmp(a->name, "start_section")) {
+    return -1;
+  }
+
+  if(!strcmp(b->name, "start_section")) {
+    return 1;
+  }
+
+
+  //place executable sections first
+  if(a->executable && !b->executable) {
+    return -1;
+  }
+  if(!a->executable && b->executable) {
+    return 1;
+  }
+
+
+  return strcmp(a->name, b->name);
+
+}
+
+
 void sort_sects() {
   //sort sections here (all text sections go before all data sections)
+
+  qsort(sects, sects_sz, sizeof(struct section_dict *), sect_comparator);
+
 }
 
 
@@ -257,15 +316,6 @@ int main(int argc, char ** argv) {
 
   build_section_lists();
 
-  for(i = 0; i < sects_sz; i++) {
-    struct section_list_entry * node;
-    printf("sect %s in\n", sects[i]->name);
-    node = sects[i]->list;
-    while(node) {
-      printf("\t%s\n", node->section->name);
-      node = node->next;
-    }    
-  }
 
   /*
   printf("Loaded labels:\n");
@@ -286,20 +336,33 @@ int main(int argc, char ** argv) {
     print_labels(label_vecs[i]);
   }
 */
-  linker_link();
-
 /*
-  f_out = fopen(output_fname, "wb");
-  for(i = 0; i<loaded_files; i++) {
-    fwrite(images[i], 1, image_sizes[i], f_out);
-    printf("%d\t0x%04x\t%s\n", image_sizes[i], image_sizes[i], image_names[i]);
-  }
-  fclose(f_out);
-
-  for(i = 0; i<loaded_files; i++) {
-    free(raw_data[i]);
+  for(i = 0; i < sects_sz; i++) {
+    struct section_list_entry * node;
+    printf("sect %s in\n", sects[i]->name);
+    node = sects[i]->list;
+    while(node) {
+      printf("\t%s from %s\n", node->section->name, node->origin->name);
+      node = node->next;
+    }    
   }
 */
+  linker_link();
+
+
+
+  f_out = fopen(output_fname, "wb");
+
+  for(i = 0; i < sects_sz; i++) {
+    struct section_list_entry * node;
+    node = sects[i]->list;
+    while(node) {
+      fwrite(node->section->data, 1, node->section->data_pos, f_out);
+      printf("%d\t0x%04x\t[%s] %s\n", node->section->data_pos, node->section->data_pos, node->section->name, node->origin->name);
+      node = node->next;
+    }    
+  }
+  fclose(f_out);
   return 0;
 
 }

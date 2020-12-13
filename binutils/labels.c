@@ -5,8 +5,27 @@
 #include "sections.h"
 #include "util.h"
 #include "labels.h"
+#include <assert.h>
+
 
 static uint16_t current_label_id = 0;
+
+
+void print_label(struct label_entry * e) {
+    printf("0x%04x\t0x%04x\t%d\t%d\t%s\n", e->id, e->position, e->present, e->export, e->name);
+}
+
+void print_labels(uint8_t * label_vec) {
+  struct label_entry * e = (struct label_entry *)label_vec;
+
+  printf("Labels:\nID\tpos\tpres\texport\tname\n");
+
+  while(*(e->name)) {
+    print_label(e);
+    e++;
+  }
+
+}
 
 
 static struct label_entry * create_new_label(char * label, struct section * current_section) {
@@ -15,6 +34,7 @@ static struct label_entry * create_new_label(char * label, struct section * curr
   new_label->id = current_label_id;
   new_label->position = 0;
   new_label->present = 0;
+  new_label->export = 0;
   current_label_id++;
   current_section->label_vec_pos+=sizeof(struct label_entry);
   return new_label;
@@ -24,7 +44,7 @@ static struct label_entry * create_new_label(char * label, struct section * curr
 struct label_entry * find_label(char * label, struct section * sect) {
   int i;
   struct label_entry * e;
-  for(i = 0; i<sect->label_mask_pos; i+=sizeof(struct label_entry)) {
+  for(i = 0; i<sect->label_vec_pos; i+=sizeof(struct label_entry)) {
     e = (struct label_entry *)(&sect->label_vec[i]);
     if(!strcmp(e->name, label)) {
       return e;
@@ -36,7 +56,7 @@ struct label_entry * find_label(char * label, struct section * sect) {
 struct label_entry * find_label_by_id(uint16_t id, struct section * sect) {
   int i;
   struct label_entry * e;
-  for(i = 0; i<sect->label_mask_pos; i+=sizeof(struct label_entry)) {
+  for(i = 0; i<sect->label_vec_pos; i+=sizeof(struct label_entry)) {
     e = (struct label_entry *)(&sect->label_vec[i]);
     if(e->id == id) {
       return e;
@@ -55,6 +75,18 @@ void mark_label_position(char * label, uint16_t pos, struct section * current_se
 
   e->position = pos;
   e->present = 1;
+}
+
+void mark_label_export(char * label, struct section * current_section) {
+  struct label_entry * e;
+
+  e = find_label(label, current_section);
+  if(!e) {
+    fprintf(stderr, "Try export unregistered label\n");
+    assert(0);
+  }
+
+  e->export = 1;
 }
 
 int calculate_offset_sum(char * str) {
